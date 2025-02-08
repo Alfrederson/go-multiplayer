@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            overflow: hidden;
+        }
+        
+        #contentor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #debug {
+            position: fixed;
+            color: lime;
+        }
+
+        #tela {
+            width: 640px;
+            height: 480px;
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="contentor">
+        <div style="width:fit-content">
+            <h1>meu mmorpg</h1>
+            <div id="debug"></div>
+            <canvas id="tela" width="640" height="480"></canvas>
+        </div>
+    </div>
+    <script src="game.js" type="module"></script>
+</body>
+</html>
