@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pig App</title>
+    <style>
+      body {
+        margin: 0px;
+        padding: 0px;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        overflow:hidden;
+        background-color: black;
+      }
+
+      canvas {
+        z-index:1;
+        margin:auto;
+        display: block;
+        cursor:crosshair;
+      }
+
+      .container{
+        margin:auto;
+      }
+
+      #debug {
+        display: block;
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        z-index: 5;
+        width: 100%;
+        font-family: monospace;
+        background:none;
+        font-weight: bolder;
+        color:yellow;
+        font-size: 24px;
+      }
+
+      #text {
+        z-index:2;
+        position:absolute;
+        top: 0px;
+        pointer-events:none;
+      }
+
+    </style>
+  </head>
+  <body>
+    <p id="debug" style="position:absolute"></p>
+    <script type="module" src="/main.js"></script>
+
+    <div class="container">
+      <canvas id="game">
+      </canvas>
+      <canvas id="text">
+      </canvas>  
+    </div>
+
+    <div id="debug"></div>
+  </body>
+</html>
