@@ -3,7 +3,7 @@ import { IB2D, IImage } from "./blitz"
 
 import { vsSource, fsSource, initShaderProgram, loadShader } from "./webgl/shader"
 
-
+import { ImageDrawer } from "./webgl/image/drawer.js"
 
 import * as image from "./webgl/image"
 import * as draw from "./webgl/draw"
@@ -27,44 +27,9 @@ import * as canvas2d from "./webgl/canvas2d"
 * 
 */
 
-/**
- * @param {WebGLRenderingContext} ctx 
- */
-function initPositionBuffer(ctx){
-    const positionBuffer = ctx.createBuffer()
-    ctx.bindBuffer(ctx.ARRAY_BUFFER,positionBuffer)
-    const positions = [
-        0.5, 0.5,
-        -0.5, 0.5,
-        0.5, -0.5,
-        -0.5, -0.5
-    ]
-    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(positions),ctx.STATIC_DRAW)
-    return positionBuffer
-}
 
-/**
- * @param {WebGLRenderingContext} ctx 
- * @param {*} buffers 
- * @param {WebGLProgramInfo} programInfo 
- */
-function setPositionAttribute(ctx, buffers, programInfo){
-    ctx.bindBuffer(
-        ctx.ARRAY_BUFFER,
-        buffers
-    )
-    ctx.vertexAttribPointer(
-        programInfo.attribLocations.vertexPosition,
-        2, // numComponents
-        ctx.FLOAT,// type
-        false ,// normalize
-        0,     // stride
-        0      // offset
-    )
-    ctx.enableVertexAttribArray(
-        programInfo.attribLocations.vertexPosition
-    )
-}
+
+
 
 
 /**
@@ -73,7 +38,7 @@ function setPositionAttribute(ctx, buffers, programInfo){
  * @param {WebGLProgramInfo} programInfo 
  * @param {number[]} uv
  */
-function setTextureCoordAttribute(ctx,buffers,programInfo,uv){
+export function setTextureCoordAttribute(ctx,buffers,programInfo,uv){
     ctx.bindBuffer( ctx.ARRAY_BUFFER , buffers )
     ctx.bufferData(
         ctx.ARRAY_BUFFER,
@@ -111,12 +76,6 @@ class WGL_B2D {
     /** @type {import("./webgl/texrender").RenderTarget} */
     renderTarget
 
-    /** @type {WebGLProgram|null} */
-    shaderProgram = null
-
-    /** @type {WebGLProgramInfo} */
-    programInfo
-
     /** @type {WebGLBuffer|null} */
     positionBuffer = null
 
@@ -136,6 +95,11 @@ class WGL_B2D {
     /** @type { image.IWGLImage | null} */
     lastImage = null
     lastFrame = 0
+
+
+
+    /** @type { ImageDrawer } */
+    imageDrawer
 
     /**
      * Carrega uma imagem.
@@ -184,6 +148,7 @@ class WGL_B2D {
         }
         letterBox()
 
+        
 
         let _webgl = canvas.getContext("webgl")
         if(!_webgl)
@@ -200,73 +165,24 @@ class WGL_B2D {
         if(!this.ctx2d)
             throw "Não consegui um contexto de desenho 2D"
 
+        mat4.ortho(this.projectionMatrix,0,width,height,0,-500,500)
+
+        this.renderTarget = rtt.init(this.ctx,width,height,this.projectionMatrix)
+        this.imageBuddy = new ImageDrawer(this.ctx,width, height)
         
-
-        // iniciar os shadeus lá
-        this.shaderProgram = initShaderProgram(this.ctx, vsSource, fsSource)
-        const {ctx,shaderProgram} = this
-
-        function ul(u){ return ctx.getUniformLocation( shaderProgram, u) }
-        function al(a){ return ctx.getAttribLocation( shaderProgram, a) }
-
-        this.programInfo = {
-            program : this.shaderProgram,
-            attribLocations :{
-                vertexPosition: al("aVertexPosition"),
-                textureCoord: al("aTextureCoord")
-            },
-            uniformLocations: {
-                projectionMatrix: ul("uProjectionMatrix"),
-                modelViewMatrix: ul("uModelViewMatrix"),
-                uSampler : ul("uSampler"),
-                drawColor : ul("uDrawColor")
-            }
-        }
-
-        this.positionBuffer = initPositionBuffer(this.ctx)
-        // faz isso uma vez só....
-        setPositionAttribute(
-            this.ctx,
-            this.positionBuffer,
-            this.programInfo
-        )
-
-        this.textureCoordinateBuffer = this.ctx.createBuffer()
-        setTextureCoordAttribute(
-            this.ctx,
-            this.textureCoordinateBuffer,
-            this.programInfo,[
-                1,1,
-                0,1,
-                1,0,
-                0,0
-            ]            
-        )
-
-        this.projectionMatrix = mat4.create()
-        mat4.ortho(this.projectionMatrix,0,width,height,0,-500,500)    
-        this.ctx.useProgram( this.programInfo.program )
         
-        // usa aquela matriz de projeção ortogonal uma vez só
-        this.ctx.uniformMatrix4fv(
-            this.programInfo.uniformLocations.projectionMatrix,
-            false, // transpose,
-            this.projectionMatrix
-        )
-
         // alpha blend
-
-        ctx.enable(ctx.BLEND);
-        ctx.blendFunc(ctx.SRC_ALPHA, ctx.ONE_MINUS_SRC_ALPHA);
-
+        this.ctx.enable(this.ctx.BLEND);
+        this.ctx.blendFunc(this.ctx.SRC_ALPHA, this.ctx.ONE_MINUS_SRC_ALPHA);
+        
         // ajusta o tamanho do canvas pra ficar  bunitim
         window.addEventListener("resize", ()=>{
             letterBox()
             this.ctx?.viewport(0,0, this.ctx.canvas.width, this.ctx.canvas.height)
         })
 
-        this.renderTarget = rtt.init(ctx,width,height)
 
+        
         this.initialized=true
     }
     /**
@@ -276,8 +192,6 @@ class WGL_B2D {
      * @param {number} b 
      */
     Cls(r,g,b){
-        this.lastImage = null
-        this.lastFrame = 0
         canvas2d.clear( this.ctx2d )
         draw.cls( this.ctx, r,g,b )
     }
@@ -296,6 +210,7 @@ class WGL_B2D {
      */
     SetScale(x,y){
         this.scale = [x,y]
+        this.imageBuddy?.setScale(x,y)
     }
 
     /**
@@ -327,37 +242,11 @@ class WGL_B2D {
      * @param {number} y
      */
     DrawImage(imageHandler, x, y){
-        // a gente precisa disso?
-        // será que não faz mais sentido usar algum construtor que só produza o WGL_B2D inteiro caso
-        // todas as partes móveis estejam presentes?
-        // if(!this.initialized)
-        //     throw "contexto não inicializado"
-        
-        if((this.lastImage !== imageHandler) || (this.lastFrame !== 0)){
-            this.lastImage = imageHandler
-            this.lastFrame = 0
-            setTextureCoordAttribute(
-                this.ctx,
-                this.textureCoordinateBuffer,
-                this.programInfo,[
-                    1,1,
-                    0,1,
-                    1,0,
-                    0,0
-                ]            
-            )   
-        }
-
-        image.drawImage(
+        this.imageBuddy?.drawImage(
             this.ctx,
             imageHandler,
-            this.programInfo,
-            this.drawColor,
-            this.rotation,
-            x - this.camX,
-            y - this.camY,
-            this.scale[0],
-            this.scale[1]
+            x- this.camX,
+            y- this.camY
         )
     }
 
@@ -366,36 +255,12 @@ class WGL_B2D {
         if(!this.initialized)
             throw "contexto não inicializado"
 
-        if((this.lastImage !== imageHandler) || (this.lastFrame !== frame)){
-            this.lastImage = imageHandler
-            this.lastFrame = frame
-            const [u0,v0,u1,v1] = imageHandler.uvs[frame]
-            // 1,1,
-            // 0,1,
-            // 1,0,
-            // 0,0            
-            setTextureCoordAttribute(
-                this.ctx,
-                this.textureCoordinateBuffer,
-                this.programInfo,[
-                    u1,v1,
-                    u0,v1,
-                    u1,v0,
-                    u0,v0
-                ]            
-            )    
-        }
-
-        image.drawImage(
+        this.imageBuddy?.drawImageFrame(
             this.ctx,
             imageHandler,
-            this.programInfo,
-            this.drawColor,
-            this.rotation,
-            (x - this.camX)|0,
-            (y - this.camY)|0,
-            this.scale[0],
-            this.scale[1]
+            x-this.camX,
+            y-this.camY,
+            frame
         )
     }
     
@@ -416,16 +281,12 @@ class WGL_B2D {
      * @param {(arg0: IB2D) => void} callback
      */
     Draw( callback ){
-        rtt.begin(
-            this.ctx,
-            this.renderTarget
-        )
+        rtt.begin( this.ctx, this.renderTarget)
+
+        this.imageBuddy?.begin(this.ctx)
         callback( this )
-        rtt.end(
-            this.ctx,
-            this.programInfo,
-            this.renderTarget
-        )
+
+        rtt.end( this.ctx, this.renderTarget )
     }
 
 

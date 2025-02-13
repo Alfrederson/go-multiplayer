@@ -18,10 +18,22 @@ const (
 	MSG_PLAYER_STATUS = 0x04
 )
 
+type Player struct {
+	Id         int    `json:"id"`
+	PlayerName string `json:"player_name"`
+	X          int    `json:"x"`
+	Y          int    `json:"y"`
+}
+
 type Client struct {
+	Player
 	Id         int
 	Connection net.Conn
 	Active     bool
+}
+
+func get_int16(bytes []byte, pos int) int {
+	return (int(bytes[pos]) << 8) | int(bytes[pos+1])
 }
 
 type Server struct {
@@ -95,6 +107,8 @@ func (s *Server) AddClient(client *Client) {
 		id_h,
 		id_l,
 	})
+	// diz para o jogador quem são os outros jogadores que estão lá
+	// (esse é difícil)
 
 	// envia a mensagem de que o jogador entrou
 	s.Broadcast(nil, []byte{
@@ -140,20 +154,21 @@ func (s *Server) AddClient(client *Client) {
 		case MSG_PLAYER_STATUS:
 			// descarta
 			if len(msg) < 7 {
-				log.Println("descartada: ", msg)
 				continue
 			}
-			// player_x := (int(msg[1]) << 8) | int(msg[2])
-			// player_y := (int(msg[3]) << 8) | int(msg[4])
-			// // posiciona o player
-			// if player_x < 0 || player_y < 0 {
-			// 	log.Println("jogador saindo das estribeiras")
-			// }
+			client.Player.X = get_int16(msg, 1)
+			client.Player.Y = get_int16(msg, 3)
+
+			// a gente vai ter um sistema de células
+			// se a pessoa se move, só quem está na mesma célula
+			// que a pessoa está vai ver a pessoa
+			// quando a pessoa sai de uma célula para a outra, o servidor
+			// manda a mensagem que indica quem está
+			// naquela célula
 		}
 
 		// replica para os outros clientes
 		s.Broadcast(client, msg)
-
 	}
 }
 

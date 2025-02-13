@@ -132,24 +132,26 @@ class GameState {
      * @param {IB2D} b 
      */
     render(b) {
-        b.Cls(168, 253, 222)
+        b.Cls(15, 34, 222)
         b.SetCamera(this.screen.cameraX, this.screen.cameraY)
 
-        this.tileMap.render(b,this) 
+        this.tileMap.render(b,this,0) 
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)
             obj.render && obj.render(b,this)
         }
+        // this.tileMap.render(b,this,1) 
+
         b.SetCamera(0,0)
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)
             obj.renderUi && obj.renderUi(b,this)
         }
 
-        if(this.messageTimer){
-            this.messageTimer--
-            b.DrawText(this.messageText, 20,20)
-        }
+        // if(this.messageTimer){
+        //     this.messageTimer--
+        //     b.DrawText(this.messageText, 20,20)
+        // }
     }
 
     messageText=""

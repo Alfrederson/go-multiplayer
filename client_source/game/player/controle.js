@@ -52,8 +52,8 @@ function ControlarPlayer(state, player) {
     })
 
     nubWalk.update = function(){
-        player.sx = nubWalk.getX()
-        player.sy = nubWalk.getY()
+        player.sx = nubWalk.getX()*2
+        player.sy = nubWalk.getY()*2
     }
 
     state.spawn( nubWalk )

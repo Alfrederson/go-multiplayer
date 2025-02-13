@@ -49,7 +49,7 @@ class Player {
      */
     update (s){
         let out = [0,0,0,0]
-        this.sy = constrain(this.sy, -4,4)
+        this.sy = constrain(this.sy, -8,8)
         this.y += this.sy 
         if(s.tileMap.objectCollides(
             this,
@@ -59,7 +59,7 @@ class Player {
             this.sy = 0
             this.y += out[1]+out[3]/2 > this.y+HEIGHT/2 ? -out[3] : out[3]
         }
-        this.sx = constrain(this.sx, -4,4)
+        this.sx = constrain(this.sx, -8,8)
         this.x += this.sx
         if(s.tileMap.objectCollides(
             this,

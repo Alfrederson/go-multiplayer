@@ -6,11 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Player struct {
-	Id         int    `json:"id"`
-	PlayerName string `json:"player_name"`
-}
-
 // 1- Eu tenho um servidor
 func main() {
 	r := gin.Default()

@@ -7,15 +7,17 @@ import { constrain, rectsIntersect } from "./util"
 let tileset
 
 
-const TILE_WIDTH = 32
-const TILE_HEIGHT = 32
+const TILE_WIDTH = 16
+const TILE_HEIGHT = 16
 
 Preload(async b => {
-    tileset = await b.LoadAnimImage("tiles.png",TILE_WIDTH,TILE_HEIGHT)
+    tileset = await b.LoadAnimImage("grayscale.png",TILE_WIDTH,TILE_HEIGHT)
 })
   
 class TileMap {
-    tiles= [[0]]
+    layers = [
+        [[0]]
+    ]
 
     /**
      * @param {string} from
@@ -34,20 +36,40 @@ class TileMap {
         let thisTile = 0
         this.width = tiled["width"]
         this.height = tiled["height"]
-        this.tiles = Array.from( {length:this.height}, x => Array.from( {length: this.width }, x => {
-            return tiled["layers"][0]["data"][thisTile++]
-        }))
+        this.layers = Array.from({length:3})
+        for(const layer of tiled.layers){
+            thisTile = 0
+            switch(layer.name.toLowerCase()){
+                case "inferior":{
+                    this.layers[0] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
+                }break;
+                case "superior":{
+                    this.layers[1] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
+                }break;
+                case "colisão":{
+                    this.layers[2] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
+                }break;
+                case "coisas":{
+
+                }break;
+            }
+        }
+        // this.layers = Array.from( {length:this.height}, x => Array.from( {length: this.width }, x => {
+        //     return tiled["layers"][0]["data"][thisTile++]
+        // }))
     }
 
     width = 1
     height = 1
+
+    renders = 0
     /**
      * @param {IB2D} b 
      * @param {GameState} s
      */
-    render (b,s){
+    render (b,s, layer){
         let fromX = Math.floor(s.screen.cameraX / TILE_WIDTH)
-        let toX = fromX + Math.ceil(s.screen.width / TILE_WIDTH)
+        let toX = fromX +Math.ceil(s.screen.width / TILE_WIDTH)
         let fromY = Math.floor(s.screen.cameraY / TILE_WIDTH)
         let toY = fromY + Math.ceil(s.screen.height / TILE_HEIGHT)
 
@@ -56,22 +78,31 @@ class TileMap {
         fromY = constrain(fromY,0,this.height)
         toY = constrain(toY+1,0,this.height)
 
+
+
         b.SetScale( 1 ,1)
         b.SetColor(1,1,1,1)
         b.SetAngle(0)        
 
+        let draws = 0
+
         for(let y = fromY; y < toY; y++){
             for(let x = fromX; x < toX; x++){
-                if(this.tiles[y][x])
-//                if(!(tileInfo[this.tiles[y][x]] & INVISIVEL)){
+                if(this.layers[layer][y][x])
+                    draws ++
                     b.DrawImageFrame(
                         tileset,
                         x*TILE_WIDTH,
                         y*TILE_HEIGHT,
-                        this.tiles[y][x]-1
+                        this.layers[layer][y][x]-1
                       )
-//                }
             }
+        }
+
+        this.renders++ 
+        if(this.renders==50){
+            document.title = `${fromX} ${toX} ${fromY} ${toY}`
+            this.renders=0
         }
     }
 
@@ -104,13 +135,11 @@ class TileMap {
         // testa os tiles...
         for(let x = fromX; x < toX; x++){
             for(let y = fromY; y < toY; y++){
-//                if(!(tileInfo[this.tiles[y][x]] & filtro))
-//                    continue
-                // esse tile...
-                const tileRect = [x*TILE_WIDTH,y*TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT]
-                // checa se colide...
-                if( rectsIntersect(tileRect, rect, out) )
-                    return this.tiles[y][x]
+                if(this.layers[2][y][x]){
+                    const tileRect = [x*TILE_WIDTH,y*TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT]
+                    if( rectsIntersect(tileRect, rect, out) )
+                        return this.layers[0][y][x]
+                }
             }
         }
         return -1

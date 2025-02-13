@@ -86,63 +86,7 @@ function loadImage(ctx, imageName, frameWidth, frameHeight){
     })
 }
 
-
-let oldImage
-/**
- * 
- * @param {WebGLRenderingContext} ctx 
- * @param {IWGLImage} imageHandler 
- * @param {*} programInfo 
- * @param {number[]} color 
- * @param {number} rotation
- * @param {number} x 
- * @param {number} y 
- * @param {number} scaleX 
- * @param {number} scaleY
- */
-function drawImage(ctx,imageHandler,programInfo, color, rotation, x, y, scaleX, scaleY){
-    const modelViewMatrix = mat4.create()
-    // cria uma matriz de translação
-    mat4.translate(
-        modelViewMatrix,
-        modelViewMatrix,
-        [(x + imageHandler.frameWidth/2),(y + imageHandler.frameHeight/2),0]
-    )
-    mat4.rotateZ(
-        modelViewMatrix,
-        modelViewMatrix,
-        rotation,
-    )
-    mat4.scale(
-        modelViewMatrix,
-        modelViewMatrix,
-        [imageHandler.frameWidth * scaleX,imageHandler.frameHeight * scaleY,1]
-    )
-    if(oldImage !== imageHandler.texture){
-        ctx.bindTexture(ctx.TEXTURE_2D,imageHandler.texture)
-        oldImage = imageHandler.texture
-    }
-    ctx.uniformMatrix4fv(
-        programInfo.uniformLocations.modelViewMatrix,
-        false, // transpose
-        modelViewMatrix
-    )
-    ctx.uniform4fv(
-        programInfo.uniformLocations.drawColor,
-        color
-    )
-    ctx.uniform1i(programInfo.uniformLocations.uSampler,0)
-    ctx.drawArrays(
-        ctx.TRIANGLE_STRIP,
-        0, // offset
-        4  // vertexCount
-    )
-}
-
-
 export {
     loadImage,
-    drawImage,
-
     IWGLImage
 }

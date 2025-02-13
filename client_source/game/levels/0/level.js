@@ -3,7 +3,7 @@ import { GameState } from "../../../game_state";
 import { Player } from "../../player/player";
 import { ControlarPlayer } from "../../player/controle";
 
-import mapa from "./mapa0"
+import mapa from "./cidade"
 
 /*
     Load recebe um gamestate que pode ser manipulado à vontade.
@@ -15,7 +15,7 @@ import mapa from "./mapa0"
 function Load(state){
     state.reset()
     state.tileMap.FromTiled(mapa)
-    let player = make( new Player(), { x: 64, y: 32})
+    let player = make( new Player(), { x: 8*16, y: 10*16})
     state.spawn(
         player
     )

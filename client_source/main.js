@@ -30,6 +30,7 @@ class CatGame {
 
   /** @param {IB2D} b */
   setup(b) {
+    console.log("graphics")
     b.Graphics(SCREEN_WIDTH, SCREEN_HEIGHT, "game")
     AttachInput(SCREEN_WIDTH, SCREEN_HEIGHT, "game")
 
