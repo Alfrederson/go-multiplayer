@@ -1,47 +1,50 @@
-import { mat4 } from "gl-matrix"
-import { IImage } from "../blitz"
-
-/** @interface */
-class IWGLImage extends IImage {
-    /** @type {WebGLTexture} */
+class WGLImage {
+    /** @type {WebGLTexture|undefined} */
     texture
-    /** @type {number[][]} */
+
+    /** @type {number[][]|undefined} */
     uvs
+
+    width = 32
+    height= 32
+    frameWidth = 1
+    frameHeight = 1
+    frameCount = 1
+
+    /**
+     * @param {WebGLTexture} [texture]
+     * @param {number[][]} [uvs]
+     */
+    constructor(texture,uvs){
+        this.texture=texture
+        this.uvs=uvs
+    }
+
+    getWidth(){}
+    getHeight(){}
+    getFrameWidth(){}
+    getFrameHeight(){}    
 }
 
-/** @type{ Map<string,IWGLImage> } */
+
+/** @type { Map<string,WGLImage> } */
 const _imageMap = new Map()
 
 /**
+ * carrega uma imagem que pode ter frames ou não.
+ * fazer uma versão pra cada?
  * @param {WebGLRenderingContext} ctx
  * @param {string} imageName
  * @param {number} frameWidth
  * @param {number} frameHeight
- * @returns {Promise<IWGLImage>|IWGLImage}
+ * @returns {Promise<WGLImage>|WGLImage}
  */
-
 function loadImage(ctx, imageName, frameWidth, frameHeight){
     let img = _imageMap.get(imageName)
     if (img) return img;
 
-    return new Promise( (resolve,reject)=>{
-        const texture = ctx.createTexture()
-        if(!texture){
-            reject("não consegui criar uma textura")
-            return
-        }        
-
-        const result = {
-            width : 32,
-            height: 32,
-            frameWidth,
-            frameHeight,
-            frameCount : 1,
-            texture,
-            /** @type{number[][]} */
-            uvs : []
-        }
-
+    return new Promise( (resolve,reject)=>{        
+        const result = new WGLImage()
         const image = new Image()
         image.onload = function(){            
             result.width = image.width
@@ -51,7 +54,10 @@ function loadImage(ctx, imageName, frameWidth, frameHeight){
                 let framesY =(result.height/frameHeight)|0
                 let uvw = 1 / framesX
                 let uvh = 1 / framesY
+                result.frameWidth = frameWidth
+                result.frameHeight = frameHeight
                 result.frameCount = framesX * framesY
+                result.uvs = []
                 for(let y = 0; y < framesY; y++){
                     for(let x = 0; x < framesX; x++){                    
                         result.uvs.push([
@@ -66,7 +72,17 @@ function loadImage(ctx, imageName, frameWidth, frameHeight){
                 result.frameWidth = image.width
                 result.frameHeight = image.height
             }
+
+            const texture = ctx.createTexture()
+            result.texture = texture
+            
+            if(!texture){
+                reject("não consegui criar uma textura")
+                return
+            }  
+
             ctx.bindTexture(ctx.TEXTURE_2D,texture)
+
             ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.LINEAR)
             ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST)    
             ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE)
@@ -88,5 +104,5 @@ function loadImage(ctx, imageName, frameWidth, frameHeight){
 
 export {
     loadImage,
-    IWGLImage
+    WGLImage
 }

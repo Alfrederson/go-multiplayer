@@ -1,6 +1,5 @@
 import { mat4 } from "gl-matrix"
 import { initShaderProgram } from "../shader"
-import { IWGLImage } from "../image"
 
 // shaders pra desenhar imagem com escala e tal
 const vsSource = `
@@ -43,7 +42,7 @@ function initPositionBuffer(ctx){
 /**
  * @param {WebGLRenderingContext} ctx 
  * @param {*} buffers 
- * @param {import("../../webgl").WebGLProgramInfo} programInfo 
+ * @param {{attribs : {textureCoord : GLuint }}} programInfo 
  * @param {number[]} uv
  */
 function setTextureCoordAttribute(ctx,buffers,programInfo,uv){
@@ -54,7 +53,7 @@ function setTextureCoordAttribute(ctx,buffers,programInfo,uv){
         ctx.STATIC_DRAW
     )
     ctx.vertexAttribPointer(
-        programInfo.attribLocations.textureCoord,
+        programInfo.attribs.textureCoord,
         2,
         ctx.FLOAT,
         false,
@@ -62,14 +61,14 @@ function setTextureCoordAttribute(ctx,buffers,programInfo,uv){
         0
     )
     ctx.enableVertexAttribArray( 
-        programInfo.attribLocations.textureCoord
+        programInfo.attribs.textureCoord
     )
 }
 
 /**
  * @param {WebGLRenderingContext} ctx 
  * @param {*} buffers 
- * @param {import("../../webgl").WebGLProgramInfo} programInfo 
+ * @param {{attribs : {vertexPosition : GLuint}}} programInfo 
  */
 function setPositionAttribute(ctx, buffers, programInfo){
     ctx.bindBuffer(
@@ -77,7 +76,7 @@ function setPositionAttribute(ctx, buffers, programInfo){
         buffers
     )
     ctx.vertexAttribPointer(
-        programInfo.attribLocations.vertexPosition,
+        programInfo.attribs.vertexPosition,
         2, // numComponents
         ctx.FLOAT,// type
         false ,// normalize
@@ -85,7 +84,7 @@ function setPositionAttribute(ctx, buffers, programInfo){
         0      // offset
     )
     ctx.enableVertexAttribArray(
-        programInfo.attribLocations.vertexPosition
+        programInfo.attribs.vertexPosition
     )
 }
 
@@ -93,7 +92,7 @@ let oldTexture
 /**
  * 
  * @param {WebGLRenderingContext} ctx 
- * @param {IWGLImage} imageHandler 
+ * @param {import("../image").WGLImage} imageHandler 
  * @param {*} programInfo 
  * @param {number[]} color 
  * @param {number} rotation
@@ -113,7 +112,8 @@ function drawImage(
     scaleX,
     scaleY
 ){
-
+    if(!imageHandler.texture)
+        throw "cade a textura da imagem???"
     // attribute vec4 aVertexPosition;
     // attribute vec2 aTextureCoord;
 
@@ -139,20 +139,23 @@ function drawImage(
         modelViewMatrix,
         rotation,
     )
+    
     if(imageHandler.texture !== oldTexture){
         ctx.bindTexture(ctx.TEXTURE_2D,imageHandler.texture)
         oldTexture=imageHandler.texture
+        ctx.uniform1i(programInfo.uniforms.sampler,0)
     }
+    
     ctx.uniformMatrix4fv(
-        programInfo.uniformLocations.modelViewMatrix,
+        programInfo.uniforms.modelViewMatrix,
         false, // transpose
         modelViewMatrix
     )
     ctx.uniform4fv(
-        programInfo.uniformLocations.drawColor,
+        programInfo.uniforms.drawColor,
         color
     )
-    ctx.uniform1i(programInfo.uniformLocations.uSampler,0)
+    
     ctx.drawArrays(
         ctx.TRIANGLE_STRIP,
         0, // offset
@@ -170,34 +173,8 @@ export class ImageDrawer {
     #rotation = 0
     #scale = [1,1]
 
-
     begin(ctx){
-        ctx.useProgram( this.#shaderProgram )
-        // projeção...
-        ctx.uniformMatrix4fv(
-            this.#programInfo.uniformLocations.projectionMatrix,
-            false, // transpose,
-            this.#projectionMatrix 
-        )        
-
-        // posição dos vértices...
-        setPositionAttribute(
-            ctx,
-            this.#positionBuffer,
-            this.#programInfo
-        )
-
-        // u-v...
-        setTextureCoordAttribute(
-            ctx,
-            this.#textureCoordinateBuffer,
-            this.#programInfo,[
-                1,1,
-                0,1,
-                1,0,
-                0,0
-            ]            
-        )         
+       
     }
 
     getProgram(){
@@ -225,14 +202,14 @@ export class ImageDrawer {
         // guarda a posição dos attribs e uniforms
         this.#programInfo = {
             program : this.#shaderProgram,
-            attribLocations :{
+            attribs :{
                 vertexPosition: al("aVertexPosition"),
                 textureCoord: al("aTextureCoord")
             },
-            uniformLocations: {
+            uniforms: {
                 projectionMatrix: ul("uProjectionMatrix"),
                 modelViewMatrix: ul("uModelViewMatrix"),
-                uSampler : ul("uSampler"),
+                sampler : ul("uSampler"),
                 drawColor : ul("uDrawColor")
             }
         }        
@@ -244,7 +221,20 @@ export class ImageDrawer {
         this.#textureCoordinateBuffer = ctx.createBuffer()
     }
 
+    
     drawImage(ctx, imageHandler, x, y){
+        ctx.useProgram( this.#shaderProgram )
+        ctx.uniformMatrix4fv(
+            this.#programInfo.uniforms.projectionMatrix,
+            false, // transpose,
+            this.#projectionMatrix 
+        )        
+        setPositionAttribute(
+            ctx,
+            this.#positionBuffer,
+            this.#programInfo
+        )
+
         // imagem sem frame...
         setTextureCoordAttribute(
             ctx,
@@ -256,6 +246,8 @@ export class ImageDrawer {
                 0,0
             ]            
         )
+
+         
                 
         drawImage(
             ctx,
@@ -272,6 +264,18 @@ export class ImageDrawer {
 
 
     drawImageFrame(ctx, imageHandler, x,y, frame){
+        ctx.useProgram( this.#shaderProgram )
+        ctx.uniformMatrix4fv(
+            this.#programInfo.uniforms.projectionMatrix,
+            false, // transpose,
+            this.#projectionMatrix 
+        )        
+        setPositionAttribute(
+            ctx,
+            this.#positionBuffer,
+            this.#programInfo
+        )
+                
         const [u0,v0,u1,v1] = imageHandler.uvs[frame]
         // 1,1,
         // 0,1,

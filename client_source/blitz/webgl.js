@@ -1,14 +1,11 @@
 import { mat4 } from "gl-matrix"
-import { IB2D, IImage } from "./blitz"
+import { IB2D } from "./blitz"
 
-import { vsSource, fsSource, initShaderProgram, loadShader } from "./webgl/shader"
-
-import { ImageDrawer } from "./webgl/image/drawer.js"
+import { ImageDrawer } from "./webgl/drawer/image.js"
+import { TileMapDrawer } from "./webgl/drawer/tilemap.js"
 
 import * as image from "./webgl/image"
-import * as draw from "./webgl/draw"
-import * as rtt from "./webgl/texrender"
-
+import * as render_to_texture from "./webgl/render_to_texture.js"
 
 import * as canvas2d from "./webgl/canvas2d"
 
@@ -16,21 +13,15 @@ import * as canvas2d from "./webgl/canvas2d"
  * WebGL program with attribute and uniform locations.
  * @typedef {Object} WebGLProgramInfo
  * @property {WebGLProgram} program - The WebGL program.
- * @property {Object} attribLocations - Attribute locations.
- * @property {number} attribLocations.vertexPosition - The location of the vertex position attribute.
- * @property {number} attribLocations.textureCoord - The location of the texture position attribute.
- * @property {Object} uniformLocations - Uniform locations.
- * @property {WebGLUniformLocation | null} uniformLocations.projectionMatrix - The location of the projection matrix uniform.
- * @property {WebGLUniformLocation | null} uniformLocations.modelViewMatrix - The location of the model-view matrix uniform.
- * @property {WebGLUniformLocation | null} uniformLocations.drawColor - The location of the drawColor uniform.
- * @property {WebGLUniformLocation | null} uniformLocations.uSampler - The location of the drawColor uniform.
+ * @property {Object} attribs - Attribute locations.
+ * @property {number} attribs.vertexPosition - The location of the vertex position attribute.
+ * @property {number} attribs.textureCoord - The location of the texture position attribute.
+ * @property {Object} uniforms - Uniform locations.
+ * @property {WebGLUniformLocation | null} uniforms.modelViewMatrix - The location of the model-view matrix uniform.
+ * @property {WebGLUniformLocation | null} uniforms.drawColor - The location of the drawColor uniform.
+ * @property {WebGLUniformLocation | null} uniforms.uSampler - The location of the drawColor uniform.
 * 
 */
-
-
-
-
-
 
 /**
  * @param {WebGLRenderingContext} ctx 
@@ -46,7 +37,7 @@ export function setTextureCoordAttribute(ctx,buffers,programInfo,uv){
         ctx.STATIC_DRAW
     )
     ctx.vertexAttribPointer(
-        programInfo.attribLocations.textureCoord,
+        programInfo.attribs.textureCoord,
         2,
         ctx.FLOAT,
         false,
@@ -54,13 +45,15 @@ export function setTextureCoordAttribute(ctx,buffers,programInfo,uv){
         0
     )
     ctx.enableVertexAttribArray( 
-        programInfo.attribLocations.textureCoord
+        programInfo.attribs.textureCoord
     )
 }
 
 
-
-
+// o que que eu estava tentando fazer aqui???
+// fazer um renderizador webgl intercambiável com um 
+// renderizador de canvas!
+// vou remover isso e deixar só o wgl
 /** @implements {IB2D} */
 class WGL_B2D {
     // GAMBI
@@ -73,17 +66,8 @@ class WGL_B2D {
     /** @type {WebGLRenderingContext} */
     ctx
 
-    /** @type {import("./webgl/texrender").RenderTarget} */
+    /** @type {import("./webgl/render_to_texture.js").RenderTarget} */
     renderTarget
-
-    /** @type {WebGLBuffer|null} */
-    positionBuffer = null
-
-    /** @type {WebGLBuffer|null} */
-    textureCoordinateBuffer = null
-
-    /** @type {mat4} */
-    projectionMatrix = mat4.create()
 
     scale = [1,1]
     rotation = 0
@@ -92,14 +76,17 @@ class WGL_B2D {
     camX = 0
     camY = 0
 
-    /** @type { image.IWGLImage | null} */
+    /** @type { image.WGLImage | null} */
     lastImage = null
     lastFrame = 0
 
 
 
     /** @type { ImageDrawer } */
-    imageDrawer
+    imageBuddy
+
+    /** @type { TileMapDrawer } */
+    tileBuddy
 
     /**
      * Carrega uma imagem.
@@ -155,6 +142,9 @@ class WGL_B2D {
             throw "Não consegui pegar um contexto de renderização."
         this.ctx = _webgl;
 
+        if(!textCanvas)
+            throw "não tenho o canvas de texto!"
+
         this.ctx2d = canvas2d.initializeText(
             textCanvas,
             canvas,
@@ -165,12 +155,14 @@ class WGL_B2D {
         if(!this.ctx2d)
             throw "Não consegui um contexto de desenho 2D"
 
-        mat4.ortho(this.projectionMatrix,0,width,height,0,-500,500)
+        // note a mistura caótica de estilos diferentes
+        this.renderTarget = render_to_texture.init(this.ctx,width,height)
 
-        this.renderTarget = rtt.init(this.ctx,width,height,this.projectionMatrix)
+        // aqui eu estava achando que teria mais de um renderizador de
+        // imagem ao mesmo tempo. vai ter não!
         this.imageBuddy = new ImageDrawer(this.ctx,width, height)
-        
-        
+        this.tileBuddy = new TileMapDrawer(this.ctx,width, height)
+                
         // alpha blend
         this.ctx.enable(this.ctx.BLEND);
         this.ctx.blendFunc(this.ctx.SRC_ALPHA, this.ctx.ONE_MINUS_SRC_ALPHA);
@@ -181,8 +173,6 @@ class WGL_B2D {
             this.ctx?.viewport(0,0, this.ctx.canvas.width, this.ctx.canvas.height)
         })
 
-
-        
         this.initialized=true
     }
     /**
@@ -193,7 +183,8 @@ class WGL_B2D {
      */
     Cls(r,g,b){
         canvas2d.clear( this.ctx2d )
-        draw.cls( this.ctx, r,g,b )
+        this.ctx.clearColor(r/255,g/255,b/255,1.0)
+        this.ctx.clear(this.ctx.COLOR_BUFFER_BIT)        
     }
 
     /**
@@ -237,31 +228,36 @@ class WGL_B2D {
     }    
 
     /**
-     * @param {image.IWGLImage} imageHandler
+     * @param {image.WGLImage} imageHandler
      * @param {number} x
      * @param {number} y
      */
     DrawImage(imageHandler, x, y){
-        this.imageBuddy?.drawImage(
+        this.imageBuddy.drawImage(
             this.ctx,
             imageHandler,
             x- this.camX,
             y- this.camY
         )
     }
-
-
+    /**
+     * @param {image.WGLImage} imageHandler
+     * @param {number} x
+     * @param {number} y
+     * @param {number} frame
+     */
     DrawImageFrame(imageHandler, x, y, frame){
-        if(!this.initialized)
-            throw "contexto não inicializado"
-
-        this.imageBuddy?.drawImageFrame(
+        this.imageBuddy.drawImageFrame(
             this.ctx,
             imageHandler,
             x-this.camX,
             y-this.camY,
             frame
         )
+    }
+
+    DrawTilemap(tilemapHandler, imageHandler, x,y){
+        this.tileBuddy.drawTilemap(this.ctx,tilemapHandler,imageHandler,x|0,y|0)
     }
     
     /**
@@ -271,25 +267,31 @@ class WGL_B2D {
      * @param {number} y 
      */
     DrawText(txt,x,y){
-        canvas2d.drawText(
-            this.ctx2d,
-            x,y,txt
-        )
+        canvas2d.drawText(this.ctx2d,x,y,txt)
     }
 
     /**
      * @param {(arg0: IB2D) => void} callback
      */
     Draw( callback ){
-        rtt.begin( this.ctx, this.renderTarget)
-
-        this.imageBuddy?.begin(this.ctx)
+        render_to_texture.begin( this.ctx, this.renderTarget)
         callback( this )
-
-        rtt.end( this.ctx, this.renderTarget )
+        render_to_texture.end( this.ctx, this.renderTarget )
     }
+}
 
 
+/**
+ * 
+ * @param {number} n 
+ * @returns 
+ */
+export function nearestPowerOf2(n){
+    let result = 1
+    while ( result < n){
+        result *= 2
+    }
+    return result
 }
 
 export {

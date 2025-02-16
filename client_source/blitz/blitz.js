@@ -1,5 +1,7 @@
-/** @interface */
 
+import { TileMap } from "./webgl/drawer/tilemap"
+
+/** @interface */
 class IB2D{
     /**
      * Inicia os gráficos.
@@ -80,6 +82,15 @@ class IB2D{
     DrawImageFrame(imageHandler,x,y,frame){}
 
     /**
+     * Desenha um tilemap em x, y
+     * @param {TileMap} tilemapHandler
+     * @param {IImage} imageHandler
+     * @param {number} x
+     * @param {number} y
+     */
+    DrawTilemap(tilemapHandler,imageHandler,x,y){}
+
+    /**
      * Define o ângulo de rotação para os próximos desenhos.
      * @param {number} angle
      */
@@ -110,6 +121,10 @@ class IImage {
     frameWidth = 0
     frameHeight = 0
     frameCount = 0
+    getWidth(){}
+    getHeight(){}
+    getFrameWidth(){}
+    getFrameHeight(){}
 }
 
 
@@ -163,12 +178,6 @@ async function Start(game, b2d){
     const drawer = i => game.draw(i)
     
     function draw(){
-        /**
-         * Ou:
-         * 
-         * b2d.Draw( game.draw )
-         */
-
         b2d.Draw( drawer ) 
         requestAnimationFrame(draw)
     }

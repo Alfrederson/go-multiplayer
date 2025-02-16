@@ -2,7 +2,7 @@ import {
     IB2D,
 } from "./blitz/blitz.js"
 
-import { TileMap } from "./game/tileMap.js"
+import { GameMap } from "./game/game_map.js"
 import { constrain } from "./game/util.js"
 
 import Stack from "./stack.js"
@@ -45,6 +45,12 @@ class GameState {
 
     // faz a "câmera" olhar pra uma posição x/y no espaço.
     lookAt(x,y){
+
+        this.screen.cameraX = x- this.screen.width/2
+        this.screen.cameraY = y- this.screen.height/2
+
+        return
+
         let dx = x - this.screen.cameraX - this.screen.width/2
         let dy = y - this.screen.cameraY - this.screen.height/2
         if (Math.abs(dx) <= 1){
@@ -57,19 +63,21 @@ class GameState {
         }else{
             this.screen.cameraY += dy / 10
         }
+
+        return
         this.screen.cameraX = constrain(
             this.screen.cameraX,
             0,
-            this.tileMap.width*32 - this.screen.width
+            this.tileMap.width*16 - this.screen.width
         )
         this.screen.cameraY = constrain(
             this.screen.cameraY,
             0,
-            this.tileMap.height*32 - this.screen.height
+            this.tileMap.height*16 - this.screen.height
         )
     }
 
-    tileMap = new TileMap()
+    tileMap = new GameMap()
 
     /** @type {Stack<IGameThing>} */
     _scene = new Stack(MAX_THINGS)
@@ -132,26 +140,19 @@ class GameState {
      * @param {IB2D} b 
      */
     render(b) {
-        b.Cls(15, 34, 222)
+        b.Cls(152, 34, 137)
         b.SetCamera(this.screen.cameraX, this.screen.cameraY)
-
         this.tileMap.render(b,this,0) 
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)
             obj.render && obj.render(b,this)
         }
-        // this.tileMap.render(b,this,1) 
-
+        this.tileMap.render(b,this,1) 
         b.SetCamera(0,0)
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)
             obj.renderUi && obj.renderUi(b,this)
         }
-
-        // if(this.messageTimer){
-        //     this.messageTimer--
-        //     b.DrawText(this.messageText, 20,20)
-        // }
     }
 
     messageText=""
