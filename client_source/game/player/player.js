@@ -58,10 +58,15 @@ class Player {
     }
 
     // jogadores locais
-    controlLocal(s){
+    /**
+     * 
+     * @param {GameState} s 
+     * @param {number} deltaTime 
+     */
+    controlLocal(s,deltaTime){
         let out = [0,0,0,0]
         this.sy = constrain(this.sy, -8,8)
-        this.y += this.sy 
+        this.y += this.sy * deltaTime * 60;
         if(s.tileMap.objectCollides(
             this,
             out,
@@ -71,7 +76,8 @@ class Player {
             this.y += out[1]+out[3]/2 > this.y+HEIGHT/2 ? -out[3] : out[3]
         }
         this.sx = constrain(this.sx, -8,8)
-        this.x += this.sx
+
+        this.x += this.sx * deltaTime * 60;
         if(s.tileMap.objectCollides(
             this,
             out,
@@ -102,7 +108,12 @@ class Player {
     }
 
     // jogadores online
-    controlRemote(s){
+    /**
+     * 
+     * @param {GameState} s 
+     * @param {number} deltaTime 
+     */
+    controlRemote(s,deltaTime){
 
         // interpolação pra ficar bunitim
         const now = performance.now()
@@ -144,13 +155,14 @@ class Player {
 
     /**
      * @param {GameState} s
+     * @param {number} deltaTime
      */
-    update (s){
+    update (s,deltaTime){
 
         if(this.remoteControlled){
-            this.controlRemote(s)
+            this.controlRemote(s,deltaTime)
         }else{
-            this.controlLocal(s)
+            this.controlLocal(s,deltaTime)
         }
 
     }

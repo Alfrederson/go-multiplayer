@@ -19,7 +19,7 @@ const MAX_THINGS = 500
 // Isso aqui não é GODOT não que te obriga a pensar do jeito que o framework quer.
 
 /**
- * @typedef {function(GameState):void} UpdateMethod
+ * @typedef {function(GameState,number):void} UpdateMethod
  * @typedef {function(IB2D, GameState): void} RenderMethod
  */
 
@@ -111,14 +111,18 @@ class GameState {
         this.screen.cameraY = target.y
     }
 
-    update() {
+    /**
+     * deltaTime é quanto tempo o último frame durou em segundos
+     * @param {number} deltaTime 
+     */
+    update(deltaTime) {
         // loop through all the objects in the scene stack updating them
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)
             if (!obj)
                 continue
 
-            obj.update && obj.update(this)
+            obj.update && obj.update(this, deltaTime)
 
             // this is still alive...
             if (!obj.dead) {
@@ -206,9 +210,16 @@ class GameState {
      * @param {Uint8Array} message 
      */
     listener(message){
+        const player_id = util.get_int16(message,1)
         switch(message[0]){
+            case messages.SERVER.PLAYER.EXITED:{
+                const other_player = this._other_clients.get(player_id)
+                if(other_player){
+                    other_player.dead=true
+                }                
+                this._other_clients.delete(player_id)
+            }break;
             case messages.PLAYER.STATUS:{
-                const player_id = util.get_int16(message,1)
                 const player_x = util.get_int16(message,3)
                 const player_y = util.get_int16(message,5)
                 let other_player = this._other_clients.get(player_id) 

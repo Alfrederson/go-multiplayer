@@ -52,9 +52,13 @@ class CatGame {
     Level0.Load( this.gameState )
   }
 
+  then = performance.now()
   /** @param {IB2D} b */
   draw(b) {
-    this.gameState.update()
+    const now = performance.now()
+    const dT = (now-this.then)/1000.0
+    this.then=now
+    this.gameState.update(dT)
     this.gameState.render(b)
   }
 }
