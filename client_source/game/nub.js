@@ -40,6 +40,7 @@ class Nub {
    * @param {IB2D} b - B2D
    * */
   renderUi(b) {
+
     b.SetScale(1, 1)
     let angulo = Math.atan2(-this.dy , this.dx)
     let length = constrain( Math.sqrt(this.dx*this.dx + this.dy*this.dy), 0, NUB_SIZE*0.25)

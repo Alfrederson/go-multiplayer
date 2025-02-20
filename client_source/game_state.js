@@ -1,9 +1,15 @@
 import {
     IB2D,
+    make,
 } from "./blitz/blitz.js"
 
 import { GameMap } from "./game/game_map.js"
+import { ControlarPlayer } from "./game/player/controle.js"
+import { Player } from "./game/player/player.js"
 import { constrain } from "./game/util.js"
+
+import * as messages from "./game/client/messages.js"
+import * as util from "./game/client/util.js"
 
 import Stack from "./stack.js"
 
@@ -32,6 +38,9 @@ const MAX_THINGS = 500
  */
 
 class GameState {
+
+    
+
     screen = {
         width : 0,
         height : 0,
@@ -45,12 +54,6 @@ class GameState {
 
     // faz a "câmera" olhar pra uma posição x/y no espaço.
     lookAt(x,y){
-
-        this.screen.cameraX = x- this.screen.width/2
-        this.screen.cameraY = y- this.screen.height/2
-
-        return
-
         let dx = x - this.screen.cameraX - this.screen.width/2
         let dy = y - this.screen.cameraY - this.screen.height/2
         if (Math.abs(dx) <= 1){
@@ -63,8 +66,6 @@ class GameState {
         }else{
             this.screen.cameraY += dy / 10
         }
-
-        return
         this.screen.cameraX = constrain(
             this.screen.cameraX,
             0,
@@ -78,6 +79,9 @@ class GameState {
     }
 
     tileMap = new GameMap()
+
+    /** @type {Map<number,Player>} */
+    _other_clients = new Map()
 
     /** @type {Stack<IGameThing>} */
     _scene = new Stack(MAX_THINGS)
@@ -158,13 +162,68 @@ class GameState {
     messageText=""
     messageTimer=0
 
+    // coisas do client
     /**
      * 
-     * @param {string} msg 
+     * @param {import("./game/client/client.js").Client} client 
      */
-    message(msg){
-        this.messageText = msg
-        this.messageTimer = 120
+    connected(client){
+        const player = make(
+            new Player(),{x: 8 * 16, y: 10*16}
+        )
+        this.spawn(player)
+        this.setTarget(player)
+        ControlarPlayer(this,player)
+
+
+        const SIZE_MSG = 1
+        const SIZE_ID = 2
+        const SIZE_POS_X = 2
+        const SIZE_POS_Y = 2
+
+        setInterval(()=>{
+            const message = new Uint8Array(SIZE_MSG+SIZE_ID+SIZE_POS_X+SIZE_POS_Y)
+            util.put_int8(messages.PLAYER.STATUS,message,0)
+            util.put_int16(player.x,message,3)
+            util.put_int16(player.y,message,5)
+            client.send(message)
+        },100)
+    }
+
+    disconnected(){
+        this._scene.reset()
+        this._alives.reset()
+        this._other_clients.clear()
+    }
+
+    error(error){
+        this._scene.reset()
+        this._alives.reset()
+        this._other_clients.clear()
+    }
+
+    /**
+     * @param {Uint8Array} message 
+     */
+    listener(message){
+        switch(message[0]){
+            case messages.PLAYER.STATUS:{
+                const player_id = util.get_int16(message,1)
+                const player_x = util.get_int16(message,3)
+                const player_y = util.get_int16(message,5)
+                let other_player = this._other_clients.get(player_id) 
+
+                if(!other_player){
+                    other_player = make(new Player(), {x : player_x, y: player_y})
+                    this._other_clients.set(player_id,other_player)
+
+                    other_player.TurnOnRemoteControl()
+                    this.spawn(other_player)
+
+                }
+                other_player.remoteGoTo(player_x,player_y)
+            }break;
+        }
     }
 }
 

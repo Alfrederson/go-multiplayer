@@ -20,13 +20,16 @@ document.URL
 
 import {
   SCREEN_WIDTH,
-  SCREEN_HEIGHT
+  SCREEN_HEIGHT,
+  SERVER_URL
 } from "./config.js"
+import { Client } from "./game/client/client.js"
 
 
 /** @implements {IApp} */
 class CatGame {
   gameState = new GameState()
+  client = new Client()
 
   /** @param {IB2D} b */
   setup(b) {
@@ -36,6 +39,15 @@ class CatGame {
 
     this.gameState.screen.width = SCREEN_WIDTH
     this.gameState.screen.height = SCREEN_HEIGHT
+
+    // conecta o cliente
+    this.client.connect(SERVER_URL,{
+      listener: x => this.gameState.listener(x),
+      connected: x => this.gameState.connected(x),
+      disconnected: x => this.gameState.disconnected(),
+      error: x => this.gameState.error(x)
+    })
+    // carrega o mapa
 
     Level0.Load( this.gameState )
   }

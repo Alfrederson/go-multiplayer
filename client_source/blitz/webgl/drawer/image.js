@@ -173,10 +173,6 @@ export class ImageDrawer {
     #rotation = 0
     #scale = [1,1]
 
-    begin(ctx){
-       
-    }
-
     getProgram(){
         return this.#shaderProgram
     }
@@ -245,10 +241,7 @@ export class ImageDrawer {
                 1,0,
                 0,0
             ]            
-        )
-
-         
-                
+        )     
         drawImage(
             ctx,
             imageHandler,

@@ -191,6 +191,16 @@ function MouseDown(mb){
     return input.mouseDown[mb]
 }
 
+function KeyPress(key){
+
+}
+function KeyDown(key){
+
+}
+function KeyUp(key){
+
+}
+
 export {
     AttachInput,
     MouseX,
@@ -199,6 +209,10 @@ export {
     MouseSpeedY,
     MouseDown,
 
+    KeyPress,
+    KeyDown,
+    KeyUp,
+    
     OnTouchStart,
     OnTouchMove,
     OnTouchEnd,

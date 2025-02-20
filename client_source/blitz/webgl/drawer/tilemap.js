@@ -195,6 +195,9 @@ export class TileMapDrawer{
     if(!tilemap.texture){
       tilemap.createTexture(ctx,tileset)
     }
+    if(!tileset.texture){
+      throw "tentando desenhar tilemap sem textura"
+    }
 
     ctx.useProgram(this.shader)    
     // gruda o buffer

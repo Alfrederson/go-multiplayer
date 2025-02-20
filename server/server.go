@@ -11,12 +11,29 @@ import (
 )
 
 const (
-	MSG_SERVER_SETID = 0x01
+	// mensagens enviadas pelo servidor
+	MSG_SERVER_SETID = iota + 1
+	MSG_SERVER_PLAYER_JOINED
+	MSG_SERVER_PLAYER_EXITED
 
-	MSG_PLAYER_JOINED = 0x02
-	MSG_PLAYER_EXITED = 0x03
-	MSG_PLAYER_STATUS = 0x04
+	// mensagens enviadas pelo jogador
+	MSG_PLAYER_HEART
+	MSG_PLAYER_STATUS
 )
+
+type Message struct {
+	bytes []byte
+}
+
+func (m *Message) IsServerMessage() bool {
+	return m.bytes[0] >= MSG_SERVER_SETID && m.bytes[0] <= MSG_SERVER_PLAYER_EXITED
+}
+func (m *Message) MessageByte() byte {
+	return m.bytes[0]
+}
+func (m *Message) GetInt16(pos int) int {
+	return (int(m.bytes[pos]) << 8) | int(m.bytes[pos+1])
+}
 
 type Player struct {
 	Id         int    `json:"id"`
@@ -112,13 +129,13 @@ func (s *Server) AddClient(client *Client) {
 
 	// envia a mensagem de que o jogador entrou
 	s.Broadcast(nil, []byte{
-		MSG_PLAYER_JOINED,
+		MSG_SERVER_PLAYER_JOINED,
 		id_h,
 		id_l,
 	})
 	// envia uma mensagem quando o jogador tiver saído
 	defer s.Broadcast(client, []byte{
-		MSG_PLAYER_EXITED,
+		MSG_SERVER_PLAYER_EXITED,
 		id_h,
 		id_l,
 	})
@@ -148,27 +165,35 @@ func (s *Server) AddClient(client *Client) {
 		msg[1] = id_h
 		msg[2] = id_l
 
+		message := Message{bytes: msg}
+
+		// não sei se faz sentido fazer isso
+		if message.IsServerMessage() {
+			continue
+		}
+
 		// faz algumas interpretações
-		switch msg[0] {
+		switch message.MessageByte() {
 
 		case MSG_PLAYER_STATUS:
 			// descarta
 			if len(msg) < 7 {
 				continue
 			}
-			client.Player.X = get_int16(msg, 1)
-			client.Player.Y = get_int16(msg, 3)
-
+			client.Player.X = message.GetInt16(1)
+			client.Player.Y = message.GetInt16(3)
 			// a gente vai ter um sistema de células
 			// se a pessoa se move, só quem está na mesma célula
 			// que a pessoa está vai ver a pessoa
 			// quando a pessoa sai de uma célula para a outra, o servidor
 			// manda a mensagem que indica quem está
 			// naquela célula
+			// a gente também vai usar os portais definidos no mapa
+			// pra decidir para qual outro mapa a pessoa teletransporta
 		}
 
 		// replica para os outros clientes
-		s.Broadcast(client, msg)
+		s.Broadcast(client, message.bytes)
 	}
 }
 

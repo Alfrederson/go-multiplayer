@@ -52,9 +52,34 @@ function ControlarPlayer(state, player) {
     })
 
     nubWalk.update = function(){
-        player.sx = nubWalk.getX()*2
-        player.sy = nubWalk.getY()*2
+        // player.sx = nubWalk.getX()*2
+        // player.sy = nubWalk.getY()*2
     }
+
+    const keys = {}
+    document.addEventListener("keydown",event=>{
+        keys[event.key] = true
+    })
+    document.addEventListener("keyup",event=>{
+        keys[event.key] = false
+    })
+
+    state.spawn( {
+        dead : false,
+        update : function(){
+            let sx = 0
+            let sy = 0
+            if(keys["w"]) sy -=2
+            if(keys["s"]) sy += 2
+            if(keys["a"]) sx -=2
+            if(keys["d"]) sx += 2
+            player.sx = sx
+            player.sy = sy
+        },
+        render : function(){
+
+        }
+    })
 
     state.spawn( nubWalk )
 }

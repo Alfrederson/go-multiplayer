@@ -1,4 +1,5 @@
 import { IB2D, Preload } from "../blitz/blitz"
+import { WGL_B2D } from "../blitz/webgl"
 import { TileMap } from "../blitz/webgl/drawer/tilemap"
 import { GameState } from "../game_state"
 import { constrain, rectsIntersect } from "./util"
@@ -17,18 +18,11 @@ Preload(async b => {
   
 class GameMap {
 
-    #layer0
-    #layer1
-
-    layers = [
+    layers_raw = [
         [[0]]
     ]
 
-    constructor(){
-        document.addEventListener("keypress", ()=>{
-            this.drawingWeird = !this.drawingWeird
-        })        
-    }
+    layers = []
 
     /**
      * @param {string} from
@@ -52,22 +46,21 @@ class GameMap {
             thisTile = 0
             switch(layer.name.toLowerCase()){
                 case "inferior":{
-                    this.layers[0] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
+                    this.layers_raw[0] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
                 }break;
                 case "superior":{
-                    this.layers[1] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
+                    this.layers_raw[1] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
                 }break;
                 case "colisão":{
-                    this.layers[2] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
+                    this.layers_raw[2] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
                 }break;
                 case "coisas":{
 
                 }break;
             }
         }
-
-        this.#layer0 = new TileMap(this.layers[0])
-        this.#layer1 = new TileMap(this.layers[1])
+        this.layers[0] = new TileMap(this.layers_raw[0])
+        this.layers[1] = new TileMap(this.layers_raw[1])
     }
 
     width = 1
@@ -80,11 +73,15 @@ class GameMap {
      */
 
     drawingWeird = true
+    /**
+     * layer deve ser só 0 ou 1
+     * @param {IB2D} b 
+     * @param {GameState} s 
+     * @param {number} layer 
+     */
     render (b,s, layer){
-        const tilemap = layer == 0 ? this.#layer0 : this.#layer1
-        b.DrawTilemap(tilemap, tileset, -Math.floor(s.screen.cameraX), -Math.floor(s.screen.cameraY))
+        b.DrawTilemap(this.layers[layer], tileset, -Math.floor(s.screen.cameraX), -Math.floor(s.screen.cameraY))
     }
-
 
     /**
      * retorna o número do tile com o qual um objeto colide, ou -1 caso não colida.
@@ -114,10 +111,10 @@ class GameMap {
         // testa os tiles...
         for(let x = fromX; x < toX; x++){
             for(let y = fromY; y < toY; y++){
-                if(this.layers[2][y][x]){
+                if(this.layers_raw[2][y][x]){
                     const tileRect = [x*TILE_WIDTH,y*TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT]
                     if( rectsIntersect(tileRect, rect, out) )
-                        return this.layers[0][y][x]
+                        return this.layers_raw[0][y][x]
                 }
             }
         }

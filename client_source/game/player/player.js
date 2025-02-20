@@ -20,6 +20,11 @@ const HEIGHT = 16
 const MARGIN_X = (FRAME_WIDTH-WIDTH)/2
 const MARGIN_Y = (FRAME_HEIGHT-HEIGHT)
 
+const DIR_UP = 0
+const DIR_RIGHT = 1
+const DIR_DOWN = 2
+const DIR_LEFT = 3
+
 class Player {    
     x = 128
     y = 64
@@ -32,7 +37,15 @@ class Player {
     walking = false
     direction = 0
 
+
     anim_walk = new Animation({frameDelay: 10, frameCount: 3, baseFrame: 0, type: ANIMATION_PING_PONG})
+
+    // coisas do multiplayer
+    last_position_update_time = 0
+    oldX = 0
+    oldY = 0
+    newX = 0
+    newY = 0
 
     /**
      * @param {number[]} rect
@@ -44,10 +57,8 @@ class Player {
         rect[3] = HEIGHT
     }
 
-    /**
-     * @param {GameState} s
-     */
-    update (s){
+    // jogadores locais
+    controlLocal(s){
         let out = [0,0,0,0]
         this.sy = constrain(this.sy, -8,8)
         this.y += this.sy 
@@ -88,6 +99,60 @@ class Player {
             this.walking=false
         }
         this.anim_walk.update()
+    }
+
+    // jogadores online
+    controlRemote(s){
+
+        // interpolação pra ficar bunitim
+        const now = performance.now()
+        const elapsed = now - this.last_position_update_time
+
+        const progress = Math.min(elapsed/100,1)
+
+        this.x = this.oldX + (this.newX - this.oldX)*progress
+        this.y = this.oldY + (this.newY - this.oldY)*progress
+
+        this.sx = this.newX - this.oldX
+        this.sy = this.newY - this.oldY
+        if((Math.abs(this.sx) + Math.abs(this.sy)) >= 0.01){
+            this.walking=true
+            if(Math.abs(this.sy) > Math.abs(this.sx)){
+                this.direction = this.sy > 0 ? DIR_DOWN : DIR_UP
+            }else{
+                this.direction = this.sx > 0 ? DIR_RIGHT : DIR_LEFT
+            }
+        }else{
+            this.walking=false
+        }
+        this.anim_walk.update()
+    }
+
+    remoteGoTo(x,y){
+        this.last_position_update_time = performance.now()
+
+        this.oldX = this.x
+        this.oldY = this.y
+
+        this.newX = x
+        this.newY = y
+    }
+
+    TurnOnRemoteControl(){
+        this.remoteControlled = true
+    }
+
+    /**
+     * @param {GameState} s
+     */
+    update (s){
+
+        if(this.remoteControlled){
+            this.controlRemote(s)
+        }else{
+            this.controlLocal(s)
+        }
+
     }
     /**
      * @param {IB2D} b

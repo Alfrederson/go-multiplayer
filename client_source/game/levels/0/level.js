@@ -15,12 +15,6 @@ import mapa from "./cidade"
 function Load(state){
     state.reset()
     state.tileMap.FromTiled(mapa)
-    let player = make( new Player(), { x: 8*16, y: 10*16})
-    state.spawn(
-        player
-    )
-    state.setTarget( player )
-    ControlarPlayer( state, player )    
 } 
 
 export {
