@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/Alfrederson/backend_game/lista"
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
@@ -12,13 +13,17 @@ import (
 
 const (
 	// mensagens enviadas pelo servidor
-	MSG_SERVER_SETID = iota + 1
-	MSG_SERVER_PLAYER_JOINED
-	MSG_SERVER_PLAYER_EXITED
+	MSG_SERVER_SETID            = iota + 1 // define o ID do cliente
+	MSG_SERVER_PLAYER_JOINED               // quando algum jogador entrou
+	MSG_SERVER_PLAYER_EXITED               // quando algum jogador saiu
+	MSG_SERVER_PLAYER_SET_MAP              // quando o jogador troca de mapa, do servidor para o cliente
+	MSG_SERVER_PLAYER_SET_CELL             // quando o jogador troca de célula, do servidor par ao cliente
+	MSG_SERVER_PLAYER_PEER_LIST            // servidor diz para o cliente quem são os jogadores próximos
 
 	// mensagens enviadas pelo jogador
-	MSG_PLAYER_HEART
-	MSG_PLAYER_STATUS
+	MSG_PLAYER_HEART     // enviada em inatividade para manter a conexão aberta
+	MSG_PLAYER_STATUS    // enviada sempre que o jogador se move, ou periodicamente
+	MSG_PLAYER_ENTER_MAP // enviada quando um jogador quer entrar em um mapa diferente
 )
 
 type Message struct {
@@ -53,6 +58,13 @@ func get_int16(bytes []byte, pos int) int {
 	return (int(bytes[pos]) << 8) | int(bytes[pos+1])
 }
 
+// um mapa tem:
+//   - nome
+//   - largura, altura
+//   - (largura/20) * (altura/20) células
+//   - quando uma mensagem é publicada, ela é enviada
+//   - a todas as células próximas à célula de origem
+
 type Server struct {
 	TotalPlayers int
 	MaxPlayers   int
@@ -60,20 +72,22 @@ type Server struct {
 	mutex         sync.Mutex
 	message_count int
 
-	clients    []*Client
 	free_spots Stack[int]
+
+	free_clients   lista.List[Client]
+	active_clients lista.List[Client]
 }
 
 type ServerStatus struct {
 	TotalPlayers     int `json:"total_players"`
-	MaxPlayers       int `json:"max_players"`
+	FreeSpots        int `json:"free_spots"`
 	MessagesPerSecon int `json:"messages_per_second"`
 }
 
 func (s *Server) Status() ServerStatus {
 	return ServerStatus{
-		TotalPlayers: s.TotalPlayers,
-		MaxPlayers:   s.MaxPlayers,
+		TotalPlayers: s.active_clients.Size(),
+		FreeSpots:    s.free_clients.Size(),
 	}
 }
 
@@ -88,42 +102,50 @@ func (s *Server) Send(to *Client, message []byte) {
 }
 
 func (s *Server) Broadcast(from *Client, message []byte) {
-	for _, other_client := range s.clients {
-		if other_client == nil {
-			continue
+	s.active_clients.ForEach(func(c *Client, i int) {
+		if ((from != nil && (c.Connection != from.Connection)) || from == nil) && c.Active {
+			wsutil.WriteServerBinary(c.Connection, message)
 		}
-		if (from != nil && (other_client.Connection != from.Connection)) && other_client.Active {
-			wsutil.WriteServerBinary(other_client.Connection, message)
-		}
-	}
+	})
 }
 
-func (s *Server) AddClient(client *Client) {
-	defer client.Connection.Close()
-	s.clients[client.Id] = client
+func (s *Server) StartSession(client_link *lista.Link[Client]) {
+	client := client_link.Value
 	id_h := byte((client.Id >> 8) & 0xFF)
 	id_l := byte(client.Id & 0xFF)
+
 	log.Printf("cliente pegou o spot %d", client.Id)
 
-	s.TotalPlayers++
-
 	defer func() {
-		client.Active = false
-		log.Printf("spot %d agora está livre", client.Id)
-		// devolve o spot dele pra lista
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
-		s.clients[client.Id] = nil
-		s.TotalPlayers--
+
+		// libera o ID
 		s.free_spots.Push(client.Id)
+		log.Printf("spot %d agora está livre", client.Id)
+
+		// fecha a conexão
+		client.Connection.Close()
+
+		// reseta o cliente
+		*client = Client{
+			Connection: nil,
+			Active:     false,
+			Id:         0,
+		}
+
+		// retorna o cliente para o pool
+		s.active_clients.RemoveLink(client_link)
+		s.free_clients.AddLink(client_link)
+		// libera o id
+
+		// notifica os outros jogadores de que este aqui saiu
+		s.Broadcast(client, []byte{MSG_SERVER_PLAYER_EXITED, id_h, id_l})
 	}()
 
 	// diz par ao jogador qual é o ID dele
-	s.Send(client, []byte{
-		MSG_SERVER_SETID,
-		id_h,
-		id_l,
-	})
+	s.Send(client, []byte{MSG_SERVER_SETID, id_h, id_l})
+
 	// diz para o jogador quem são os outros jogadores que estão lá
 	// (esse é difícil)
 
@@ -133,12 +155,9 @@ func (s *Server) AddClient(client *Client) {
 		id_h,
 		id_l,
 	})
-	// envia uma mensagem quando o jogador tiver saído
-	defer s.Broadcast(client, []byte{
-		MSG_SERVER_PLAYER_EXITED,
-		id_h,
-		id_l,
-	})
+
+	// coloca na lista de clientes ativos
+	s.active_clients.AddLink(client_link)
 
 	// estatísticas
 	messages_received := 0
@@ -210,10 +229,16 @@ func (s *Server) AddClient(client *Client) {
 // 2- O servidor aceita conexões de websocket
 func (s *Server) GetWSHandler() func(c *gin.Context) {
 
-	s.clients = make([]*Client, s.MaxPlayers)
-
+	s.free_clients = lista.NewList[Client]()
 	s.free_spots = NewStack[int](s.MaxPlayers)
-	for i := s.MaxPlayers - 1; i >= 0; i-- {
+
+	for i := 0; i < s.MaxPlayers; i++ {
+		link := lista.NewLink(&Client{
+			Id:         0,
+			Connection: nil,
+			Active:     false,
+		})
+		s.free_clients.AddLink(link)
 		s.free_spots.Push(i)
 	}
 
@@ -227,18 +252,19 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
 
-		if s.free_spots.Empty() {
+		link, error := s.free_clients.TakeLink()
+		log.Printf("agora tem %d clientes disponíveis", s.free_clients.Size())
+		if error != nil {
+			log.Println(error)
 			c.JSON(429, "server is full")
 			return
 		}
 		id, _ := s.free_spots.Pop()
-
-		client := Client{
-			Id:         id,
-			Connection: conn,
+		*link.Value = Client{
 			Active:     true,
+			Connection: conn,
+			Id:         id,
 		}
-
-		go s.AddClient(&client)
+		go s.StartSession(link)
 	}
 }

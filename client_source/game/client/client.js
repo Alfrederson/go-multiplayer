@@ -88,11 +88,17 @@ export class Client {
     /**
      * 
      * @param {Uint8Array} data 
+     * @returns {boolean} retorna false se o socket não estiver aberto.
      */
     send(data){
-        if(!this.#socket)
-            throw "websocket não está aberto"
+        if(!this.#socket){
+            return false
+        }
+        if(this.#socket.readyState !== WebSocket.OPEN){
+            return false
+        }
         this.#lastSentMessageTime = performance.now()
         this.#socket.send(data)
+        return true
     }
 }

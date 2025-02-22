@@ -47,9 +47,6 @@ class CatGame {
       disconnected: x => this.gameState.disconnected(),
       error: x => this.gameState.error(x)
     })
-    // carrega o mapa
-
-    Level0.Load( this.gameState )
   }
 
   then = performance.now()

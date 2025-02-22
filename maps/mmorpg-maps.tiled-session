@@ -1,0 +1,57 @@
+{
+    "activeFile": "cidade.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "Todos os Ficheiros (*)",
+    "fileStates": {
+        "A:/dockers/mmorpg_maps/cidade.js": {
+            "scale": 0.6481770833333332,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 480.5785456006429,
+                "y": 544.6042587384493
+            }
+        },
+        "A:/dockers/mmorpg_maps/cidade.tmx": {
+            "scale": 0.6481770833333332,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 480.5785456006429,
+                "y": 544.6042587384493
+            }
+        },
+        "A:/svelte/testep5js/assets/greyscale.tsx": {
+            "scaleInDock": 1
+        },
+        "cidade.tmx": {
+            "scale": 1.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 289,
+                "y": 257.99999999999994
+            }
+        },
+        "overworld.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "last.imagePath": "A:/dockers/backend_game/client_source/public",
+    "map.lastUsedFormat": "tmx",
+    "openFiles": [
+        "cidade.tmx",
+        "overworld.tsx"
+    ],
+    "project": "mmorpg-maps.tiled-project",
+    "recentFiles": [
+        "overworld.tsx",
+        "cidade.tmx",
+        "A:/dockers/mmorpg_maps/cidade.js"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

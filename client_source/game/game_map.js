@@ -1,9 +1,9 @@
 import { IB2D, Preload } from "../blitz/blitz"
-import { WGL_B2D } from "../blitz/webgl"
 import { TileMap } from "../blitz/webgl/drawer/tilemap"
 import { GameState } from "../game_state"
 import { constrain, rectsIntersect } from "./util"
 
+import { SERVER_MAP_URL, SERVER_URL } from "../config"
 
 
 let tileset
@@ -59,8 +59,22 @@ class GameMap {
                 }break;
             }
         }
-        this.layers[0] = new TileMap(this.layers_raw[0])
-        this.layers[1] = new TileMap(this.layers_raw[1])
+        for(let i = 0; i < 2; i++){
+            if(!this.layers[i]){
+                this.layers[i] = new TileMap(this.layers_raw[i])
+            }else{
+                this.layers[i].updateTiles( this.layers_raw[i])
+            }
+        }
+    }
+
+    async LoadFromServer(map_name){
+        let result = await fetch(SERVER_MAP_URL + map_name + ".json")
+        if (result.status !== 200){
+            throw "não consegui carregar esse mapa"
+        }
+        const data = await result.json()
+        this.FromTiled(data)
     }
 
     width = 1
@@ -80,6 +94,9 @@ class GameMap {
      * @param {number} layer 
      */
     render (b,s, layer){
+        if(!this.layers[layer]){
+            return
+        }
         b.DrawTilemap(this.layers[layer], tileset, -Math.floor(s.screen.cameraX), -Math.floor(s.screen.cameraY))
     }
 
@@ -125,7 +142,4 @@ class GameMap {
 
 export {
     GameMap,
-//    tileInfo,
-//    BEIRA as FILTRO_BEIRA,
-//    SOLIDO as FILTRO_SOLIDO
 }

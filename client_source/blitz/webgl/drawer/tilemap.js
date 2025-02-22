@@ -134,6 +134,10 @@ export class TileMap{
       buffer
     )
   }
+
+  updateTiles(new_tiles){
+    
+  }
 }
 
 export class TileMapDrawer{

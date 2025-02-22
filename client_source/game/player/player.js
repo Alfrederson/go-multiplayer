@@ -15,8 +15,8 @@ Preload( async b =>{
 
 const FRAME_WIDTH = 24
 const FRAME_HEIGHT = 32
-const WIDTH = 16
-const HEIGHT = 16
+const WIDTH = 14
+const HEIGHT = 14
 const MARGIN_X = (FRAME_WIDTH-WIDTH)/2
 const MARGIN_Y = (FRAME_HEIGHT-HEIGHT)
 
@@ -65,6 +65,7 @@ class Player {
      */
     controlLocal(s,deltaTime){
         let out = [0,0,0,0]
+
         this.sy = constrain(this.sy, -8,8)
         this.y += this.sy * deltaTime * 60;
         if(s.tileMap.objectCollides(
@@ -75,8 +76,8 @@ class Player {
             this.sy = 0
             this.y += out[1]+out[3]/2 > this.y+HEIGHT/2 ? -out[3] : out[3]
         }
-        this.sx = constrain(this.sx, -8,8)
 
+        this.sx = constrain(this.sx, -8,8)
         this.x += this.sx * deltaTime * 60;
         if(s.tileMap.objectCollides(
             this,
@@ -86,20 +87,13 @@ class Player {
             this.sx = 0
             this.x += out[0]+out[2]/2 > this.x+WIDTH/2 ? -out[2] : out[2]
         }       
+
         if((Math.abs(this.sx) + Math.abs(this.sy)) >= 0.01){
             this.walking=true
             if(Math.abs(this.sy) > Math.abs(this.sx)){
-                if(this.sy > 0){
-                    this.direction = 2
-                }else{
-                    this.direction = 0
-                }
+                this.direction = this.sy > 0 ? 2 : 0
             }else{
-                if(this.sx > 0){
-                    this.direction = 1
-                }else{
-                    this.direction = 3
-                }
+                this.direction = this.sx > 0 ? 1 : 3
             }
         }else{
             this.walking=false

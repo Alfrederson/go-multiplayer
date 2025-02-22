@@ -172,6 +172,7 @@ class GameState {
      * @param {import("./game/client/client.js").Client} client 
      */
     connected(client){
+        this.tileMap.LoadFromServer("cidade")
         const player = make(
             new Player(),{x: 8 * 16, y: 10*16}
         )
@@ -185,12 +186,21 @@ class GameState {
         const SIZE_POS_X = 2
         const SIZE_POS_Y = 2
 
-        setInterval(()=>{
+        // todo: dar um jeito de essa porqueira ficar assim:
+        // client.send(message.PLAYER.STATUS, i16(0), i16(player.x), i16(player.y))
+        // ou
+        // client.player.status(player.x,player.y)
+        // ou
+        // client.player.status(player)
+
+        let interval = setInterval(()=>{
             const message = new Uint8Array(SIZE_MSG+SIZE_ID+SIZE_POS_X+SIZE_POS_Y)
             util.put_int8(messages.PLAYER.STATUS,message,0)
             util.put_int16(player.x,message,3)
             util.put_int16(player.y,message,5)
-            client.send(message)
+            if(!client.send(message)){
+                clearInterval(interval)
+            }
         },100)
     }
 

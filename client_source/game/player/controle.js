@@ -11,14 +11,17 @@ const NUB_SIZE = 64
  * @param {Player} player 
  */
 function ControlarPlayer(state, player) {
-    let nubWalk = new Nub(state.screen.width - NUB_SIZE*0.5, state.screen.height * 0.85 + NUB_SIZE/2)
+    let using_touch = false
+    let nub_walk = new Nub(state.screen.width - NUB_SIZE*0.5, state.screen.height * 0.85 + NUB_SIZE/2)
 
     // Remove todos os event handleus
     ClearAll()
 
-    const nubs = [nubWalk]
+    const nubs = [nub_walk]
     // gatinho começa a andar
     OnTouchStart(touches => {
+        using_touch = true
+
         for (let i = 0; i < touches.length; i++) {
             let { x, y, n } = touches[i];
             for (let nub of nubs) {
@@ -35,8 +38,8 @@ function ControlarPlayer(state, player) {
             // direção do gatinho
             let { x, y, n } = touches[i]
             // pulo
-            if (n == nubWalk.touch) {
-                nubWalk.move(x, y)
+            if (n == nub_walk.touch) {
+                nub_walk.move(x, y)
             }
         }
     })
@@ -51,13 +54,16 @@ function ControlarPlayer(state, player) {
         }
     })
 
-    nubWalk.update = function(){
-        // player.sx = nubWalk.getX()*2
-        // player.sy = nubWalk.getY()*2
+    nub_walk.update = function(){
+        if(!using_touch)
+            return
+        player.sx = nub_walk.getX()*2
+        player.sy = nub_walk.getY()*2
     }
 
     const keys = {}
     document.addEventListener("keydown",event=>{
+        using_touch=false
         keys[event.key] = true
     })
     document.addEventListener("keyup",event=>{
@@ -81,7 +87,7 @@ function ControlarPlayer(state, player) {
         }
     })
 
-    state.spawn( nubWalk )
+    state.spawn( nub_walk )
 }
 
 export { 
