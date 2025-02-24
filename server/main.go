@@ -10,6 +10,7 @@ import (
 
 // 1- Eu tenho um servidor
 func main() {
+	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.Default()
 

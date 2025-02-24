@@ -5,6 +5,7 @@ import { constrain, rectsIntersect } from "./util"
 
 import { SERVER_MAP_URL, SERVER_URL } from "../config"
 
+import { Sensor } from "./sensor/sensor"
 
 let tileset
 
@@ -15,14 +16,54 @@ const TILE_HEIGHT = 16
 Preload(async b => {
     tileset = await b.LoadAnimImage("grayscale.png",TILE_WIDTH,TILE_HEIGHT)
 })
-  
+
+class Portal extends Sensor {
+    /** @type {string} */
+    to_map
+    /** @type {string} */
+    to_zone
+}
+
+/**
+ * @typedef {Object} TiledObjectProperties
+ * @property {string} name
+ * @property {string} type
+ * @property {any} value
+ */
+
+/**
+ * @typedef {Object} Zone
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ */
+
+/**
+ *  @typedef {Object} TiledObject
+ *  @property {number} x
+ *  @property {number} y
+ *  @property {number} height
+ *  @property {number} width
+ *  @property {"zone"|"portal"} type
+ *  @property {string} name
+ *  @property {number} id
+ *  @property {TiledObjectProperties[]} [properties] 
+ *  */  
 class GameMap {
+    loaded = false
 
     layers_raw = [
         [[0]]
     ]
 
     layers = []
+
+    /** @type {Portal[]} */
+    sensors = []
+
+    /** @type {Map<string,Zone>} */
+    zones = new Map()
 
     /**
      * @param {string} from
@@ -37,11 +78,36 @@ class GameMap {
         this.height = this.tiles.length
     }
 
-    FromTiled(tiled){
+    activateSensors(target){
+        console.log("ativando sensores...")
+        this.sensors.forEach( sensor => {
+            sensor.target = target
+        })
+    }
+
+    /**
+     * encontra um lugar dentro de uma zona para o objeto thing, que tem um tamanho
+     * específico. 
+     * @param {[number,number]} thing 
+     * @param {string} zone_name 
+     * @returns {[number,number]}
+     */
+    pickPlaceInZone(thing,zone_name){
+        const zone = this.zones.get(zone_name)
+        if(!zone){
+            throw "zona "+zone_name+" não existe"
+        }
+        return [(zone.x + zone.width/2) , (zone.y + zone.height/2)]
+    }
+
+    fromTiled(tiled){
         let thisTile = 0
         this.width = tiled["width"]
         this.height = tiled["height"]
         this.layers = Array.from({length:3})
+        this.sensors = []
+        this.zones.clear()
+
         for(const layer of tiled.layers){
             thisTile = 0
             switch(layer.name.toLowerCase()){
@@ -55,7 +121,35 @@ class GameMap {
                     this.layers_raw[2] = Array.from({length:this.height}, x=> Array.from({length: this.width}, x=> layer.data[thisTile++]))
                 }break;
                 case "coisas":{
-
+                    console.log("carregando coisas do mapa...")                    
+                    layer.objects.forEach((/** @type { TiledObject } */ coisa)  =>{
+                        switch(coisa.type){
+                            case "portal" :{
+                                const sensor = new Portal({
+                                    x : coisa.x,
+                                    y : coisa.y,
+                                    width : coisa.width,
+                                    height : coisa.height,
+                                })
+                                if(coisa.properties){
+                                    coisa.properties.forEach( p =>{
+                                        if(Object.hasOwn(sensor,p.name)){
+                                            sensor[p.name] = p.value
+                                        }
+                                    })
+                                }
+                                this.sensors.push(sensor)
+                            };break;
+                            case "zone" : {
+                                this.zones.set(coisa.name,{
+                                    x : coisa.x,
+                                    y : coisa.y,
+                                    width : coisa.width,
+                                    height : coisa.height
+                                })
+                            };break
+                        }
+                    })
                 }break;
             }
         }
@@ -68,13 +162,15 @@ class GameMap {
         }
     }
 
-    async LoadFromServer(map_name){
+    async loadFromServer(map_name){
+        this.loaded = false
         let result = await fetch(SERVER_MAP_URL + map_name + ".json")
         if (result.status !== 200){
             throw "não consegui carregar esse mapa"
         }
         const data = await result.json()
-        this.FromTiled(data)
+        this.fromTiled(data)
+        this.loaded = true
     }
 
     width = 1

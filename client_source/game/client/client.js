@@ -4,6 +4,83 @@ import { SERVER_URL } from "../../config.js"
 import * as util from "./util.js"
 import * as messages from "./messages.js"
 
+export class Message {
+    #buffer
+    #bytes
+    pointer = 0 
+    length = 0
+
+    /**
+     * 
+     * @param {Uint8Array} bytes 
+     * @returns 
+     */
+    static FromBytes(bytes){
+        const m = new Message()
+        m.#bytes = bytes
+        m.length = bytes.length
+        return m
+    }
+
+    static Empty(){
+        const m = new Message()
+        m.length = 0
+        m.#buffer = []
+        return m
+    }
+
+    take_i8(){
+        const result = this.#bytes[this.pointer]
+        this.pointer += 1
+        return result
+    }
+    take_i16(){
+        const result_h = this.#bytes[this.pointer]
+        const result_l = this.#bytes[this.pointer+1]
+        this.pointer += 2
+        return (result_h << 8)|result_l
+    }
+    take_short_string(){
+        const length = this.#bytes[this.pointer]
+        let result = ""
+        for(let i = 0; i < length; i++){
+            result += String.fromCharCode( this.#bytes[i+this.pointer+1] )
+        }
+        this.pointer += 1+length
+        return result
+    }
+
+    put_i8(number){
+        this.#buffer.push( number & 0xFF )
+    }
+
+    put_i16(number){
+        this.#buffer.push( number >> 8) & 0xFF
+        this.#buffer.push ( number & 0xFF)
+    }
+    put_i32(number){
+        this.#buffer.push( number >> 24) & 0xFF
+        this.#buffer.push( number >> 16) & 0xFF
+        this.#buffer.push( number >> 8) & 0xFF
+        this.#buffer.push ( number & 0xFF)
+    }
+    /**
+     * coloca um texto de até 255 caracteres
+     * se for maior, a string é cortada
+     * @param {string} str 
+     */
+    put_short_string(str){
+        const len = Math.min(255,str.length)
+        this.put_i8(len)
+        for(let i = 0; i < len; i++){
+            this.put_i8( str.charCodeAt(i) )
+        }
+    }
+    construct(){
+        return new Uint8Array(this.#buffer)
+    }
+}
+
 export class Client {
     /** @type {WebSocket} */
     #socket
@@ -22,6 +99,9 @@ export class Client {
         console.log("cliente criado")
     }
 
+    connected(){
+        return this.#socket.readyState == WebSocket.OPEN
+    }
 
     /**
      * conecta no servidor.

@@ -136,7 +136,7 @@ export class TileMap{
   }
 
   updateTiles(new_tiles){
-    
+
   }
 }
 
@@ -172,9 +172,6 @@ export class TileMapDrawer{
         tileset: ul("tileset")
       }
     };
-
-    console.log(this.program_info)
-
     this.position_buffer = ctx.createBuffer()
     ctx.bindBuffer(ctx.ARRAY_BUFFER,this.position_buffer)
     ctx.bufferData(ctx.ARRAY_BUFFER,new Float32Array([

@@ -257,7 +257,7 @@ class WGL_B2D {
     }
 
     DrawTilemap(tilemapHandler, imageHandler, x,y){
-        this.tileBuddy.drawTilemap(this.ctx,tilemapHandler,imageHandler,x|0,y|0)
+        this.tileBuddy.drawTilemap(this.ctx,tilemapHandler,imageHandler,x,y)
     }
     
     /**

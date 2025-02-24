@@ -1,6 +1,4 @@
-package lista
-
-import "log"
+package pecas
 
 // uma lista de PONTEIROS
 // não tentar usar para colocar "valores primitivos" porque não vai dar certo
@@ -18,6 +16,10 @@ func (l *Link[T]) Set(val *T) *Link[T] {
 	return l
 }
 
+func (l *Link[T]) Next() *Link[T] {
+	return l.next
+}
+
 type List[T any] struct {
 	head, tail *Link[T]
 	size       int
@@ -28,27 +30,38 @@ func (l *List[T]) Size() int {
 }
 
 func (l *List[T]) AddLink(link *Link[T]) {
+	l.size++
 	link.list = l
+	// lista vazia?
 	if l.head == nil && l.tail == nil {
 		l.head = link
 		l.tail = link
-		l.size = 1
+		link.prev = nil
+		link.next = nil
 		return
 	}
-	l.tail.next = link
 	link.prev = l.tail
+	link.next = nil
+	l.tail.next = link
 	l.tail = link
-	l.size++
 }
 
 func (l *List[T]) RemoveLink(link *Link[T]) error {
 	if link.list != l {
 		panic("elo não pertence a esta lista")
 	}
+	if l.head == link {
+		l.head = link.next
+	}
+	if l.tail == link {
+		l.tail = link.prev
+	}
+
 	prev := link.prev
 	next := link.next
 	link.prev = nil
 	link.next = nil
+	link.list = nil
 	if prev != nil {
 		prev.next = next
 	}
@@ -78,14 +91,32 @@ func (l *List[T]) TakeLink() (*Link[T], error) {
 	return link, nil
 }
 
-func (l *List[T]) ForEach(fun func(*T, int)) {
-	var link *Link[T]
-	var i int = 0
-	for link = l.head; link != nil; link = link.next {
-		fun(link.Value, i)
-		i++
+func (l *List[T]) First() *Link[T] {
+	return l.head
+}
+
+func (l *List[T]) ForEach(f func(*T)) {
+	for current := l.head; current != nil; current = current.next {
+		f(current.Value)
 	}
 }
+
+// func (l *List[T]) ForEach(fun func(*T, int)) {
+// 	var link *Link[T]
+// 	var i int = 0
+// 	link = l.head
+// 	for {
+// 		if link == nil {
+// 			break
+// 		}
+// 		fun(link.Value, i)
+// 		if link.next == link {
+// 			break
+// 		}
+// 		link = link.next
+// 		i++
+// 	}
+// }
 
 func NewLink[T any](value *T) *Link[T] {
 	return &Link[T]{
@@ -96,6 +127,5 @@ func NewLink[T any](value *T) *Link[T] {
 }
 
 func NewList[T any]() List[T] {
-	log.Println("lista alocada")
 	return List[T]{}
 }

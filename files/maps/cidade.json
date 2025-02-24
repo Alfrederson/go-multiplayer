@@ -245,15 +245,48 @@
          "name":"Coisas",
          "objects":[
                 {
-                 "height":44,
+                 "height":64,
                  "id":1,
                  "name":"spawn",
                  "rotation":0,
-                 "type":"",
+                 "type":"zone",
                  "visible":true,
-                 "width":134,
-                 "x":351,
-                 "y":818
+                 "width":128,
+                 "x":352,
+                 "y":800
+                }, 
+                {
+                 "height":32,
+                 "id":2,
+                 "name":"pedreira_entry",
+                 "properties":[
+                        {
+                         "name":"to_map",
+                         "type":"string",
+                         "value":"pedreira"
+                        }, 
+                        {
+                         "name":"to_zone",
+                         "type":"string",
+                         "value":"pedreira_entry"
+                        }],
+                 "rotation":0,
+                 "type":"portal",
+                 "visible":true,
+                 "width":48,
+                 "x":496,
+                 "y":64
+                }, 
+                {
+                 "height":16,
+                 "id":3,
+                 "name":"pedreira_exit",
+                 "rotation":0,
+                 "type":"zone",
+                 "visible":true,
+                 "width":48,
+                 "x":496,
+                 "y":160
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -262,7 +295,7 @@
          "y":0
         }],
  "nextlayerid":5,
- "nextobjectid":2,
+ "nextobjectid":4,
  "orientation":"orthogonal",
  "renderorder":"left-up",
  "tiledversion":"1.10.2",

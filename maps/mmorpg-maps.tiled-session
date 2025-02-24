@@ -1,4 +1,8 @@
 {
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
     "activeFile": "cidade.tmx",
     "expandedProjectPaths": [
         "."
@@ -25,20 +29,40 @@
             "scaleInDock": 1
         },
         "cidade.tmx": {
-            "scale": 1.5,
-            "selectedLayer": 0,
+            "expandedObjectLayers": [
+                3
+            ],
+            "scale": 3,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 289,
-                "y": 257.99999999999994
+                "x": 537.5,
+                "y": 38.999999999999986
             }
         },
         "overworld.tsx": {
             "scaleInDock": 1,
             "scaleInEditor": 1
+        },
+        "pedreira.tmx": {
+            "expandedObjectLayers": [
+                2
+            ],
+            "scale": 2,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 305.25,
+                "y": 439
+            }
         }
     },
+    "last.exportedFilePath": "A:/dockers/backend_game/files/maps",
     "last.imagePath": "A:/dockers/backend_game/client_source/public",
+    "map.height": 40,
+    "map.lastUsedExportFilter": "Todos os Ficheiros (*)",
     "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 40,
     "openFiles": [
         "cidade.tmx",
         "overworld.tsx"

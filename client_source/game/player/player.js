@@ -41,7 +41,7 @@ class Player {
     anim_walk = new Animation({frameDelay: 10, frameCount: 3, baseFrame: 0, type: ANIMATION_PING_PONG})
 
     // coisas do multiplayer
-    last_position_update_time = 0
+    last_position_update_time = -1
     oldX = 0
     oldY = 0
     newX = 0
@@ -134,6 +134,9 @@ class Player {
     }
 
     remoteGoTo(x,y){
+        // personagem acabou de ser spawnado
+        // isso evita que ele apareça voando no mapa quando sai do mapa eu acho
+        const never_seen_before = this.last_position_update_time < 0
         this.last_position_update_time = performance.now()
 
         this.oldX = this.x
@@ -141,6 +144,10 @@ class Player {
 
         this.newX = x
         this.newY = y
+        if(never_seen_before){
+            this.x = x
+            this.y = y
+        }
     }
 
     TurnOnRemoteControl(){

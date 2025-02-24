@@ -19,7 +19,7 @@ import { rectsIntersect } from "../util";
  * @property {number} y
  * @property {number} width
  * @property {number} height
- * @property {import("../interfaces").ICollider} target
+ * @property {import("../interfaces").ICollider} [target]
  * @property {SensorHandler} [onEnter]
  * @property {SensorHandler} [onExit]
  */
@@ -33,7 +33,7 @@ class Sensor{
 
     rect = [0,0,0,0]
 
-    /** @type {import("../interfaces").ICollider} */
+    /** @type {import("../interfaces").ICollider|undefined} */
     target
 
     wasTriggered = false
@@ -44,6 +44,28 @@ class Sensor{
 
     /** @type {SensorHandler|null}*/
     exitHandler = null
+
+    /**
+     * @param {import("../interfaces").ICollider | undefined} target
+     */
+    setTarget(target){
+        this.target=target
+    }
+
+    /**
+     * @param {SensorHandler} handler 
+     */
+    setOnEnter(handler){
+        this.enterHandler = handler
+    }
+
+    /**
+     * 
+     * @param {SensorHandler} handler 
+     */
+    setOnExit(handler){
+        this.exitHandler = handler
+    }
     
     /**
      * 
@@ -76,12 +98,17 @@ class Sensor{
         this.enterHandler = handler
     }
 
+
     /**
      * @param {GameState} s 
      */
     update(s){
         if(this.isTriggered)
             return
+        if(!this.target){
+            this.dead = true
+            return
+        }
 
         // vê se o target tocou aqui.
         let out = [0,0,0,0]
@@ -91,7 +118,7 @@ class Sensor{
         if( rectsIntersect( this.rect, targetRect, out ) ){
             this.isTriggered = true
             this.enterHandler && this.enterHandler()
-            this.dead = true
+            this.dead = true // por que estou fazendo isso?
         }
     }
 }

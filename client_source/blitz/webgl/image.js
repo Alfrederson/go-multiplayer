@@ -93,7 +93,7 @@ function loadImage(ctx, imageName, frameWidth, frameHeight){
             _imageMap.set(imageName, result)
 
             resolve(result)
-            console.log("carreguei "+imageName)
+            console.log(imageName,"carregado")
         }
         image.onerror = function(){
             reject("não consegui carregar " + imageName)
