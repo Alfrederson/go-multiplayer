@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/gin-contrib/cors"
@@ -22,14 +21,13 @@ func main() {
 
 	r.Use(cors.Default())
 
-	r.GET("/server/map/:map_id", func(ctx *gin.Context) {
-		map_name, ok := ctx.Params.Get("map_id")
-		if !ok {
-			ctx.Status(404)
-			return
+	r.Use(func(c *gin.Context) {
+		if c.Request.URL.Path == "/maps" || c.Request.URL.Path[:6] == "/maps/" {
+			c.Header("Cache-Control", "public, max-age=3600")
 		}
-		ctx.JSON(200, fmt.Sprintf("não existe o mapa %s", map_name))
+		c.Next()
 	})
+	r.Static("/maps", "../files/maps")
 
 	r.GET("/server", server.GetWSHandler())
 	r.GET("/server/status", func(ctx *gin.Context) {
@@ -37,8 +35,6 @@ func main() {
 	})
 
 	r.Static("/client", "../client")
-
-	r.Static("/maps", "../files/maps")
 
 	log.Println("iniciando o servidor...")
 	if err := r.Run("0.0.0.0:8080"); err != nil {

@@ -13,6 +13,7 @@ import * as util from "./game/client/util.js"
 
 import Stack from "./stack.js"
 import { Message } from "./game/client/client.js"
+import { debug_text } from "./main.js"
 
 
 const MAX_THINGS = 500
@@ -253,6 +254,7 @@ class GameState {
      * @param {string} target_zone
      */
     playerEnterPortal(map_name,target_zone){
+        debug_text("entering "+map_name+"...")
         this.target_zone = target_zone
         this.target_map = map_name
     }
@@ -263,7 +265,7 @@ class GameState {
      *  @property {number} [y]
      *  @property {string} [zone]
      */
-    
+
     /**
      * método acionado por uma mensagem do servidor
      * @param {string} map_name 
@@ -272,6 +274,7 @@ class GameState {
     teleportPlayerTo(map_name, target ){
         const {x,y,zone} = target
         this.tileMap.loadFromServer(map_name).then( ()=>{
+            
             this._scene.reset()
             this._alives.reset()
             this._other_clients.clear()
@@ -290,7 +293,7 @@ class GameState {
             // sensores
             this.tileMap.sensors.forEach( x => {
                 x.setTarget( this.player )
-                x.setOnEnter(  ()=>  this.playerEnterPortal(x.to_map,x.to_zone) )
+                x.setOnEnter(  ()=> this.playerEnterPortal(x.to_map,x.to_zone) )
                 this.spawn( x )
             })
             // jogador
@@ -311,17 +314,16 @@ class GameState {
             // mensagens de servidor
             case messages.SERVER.SET_ID:{
                 my_id = msg.take_i16()
-                console.log("eu sou ",my_id)
+                debug_text("eu sou "+my_id)
             }break;
             // um jogador entrou
             case messages.SERVER.PLAYER.JOINED:{
                 const player_id = msg.take_i16()
-                console.log("jogador",player_id,"entrou")
+                debug_text("jogador "+player_id+" entrou")
             }break;
             // um jogador saiu
             case messages.SERVER.PLAYER.EXITED:{
                 const player_id = msg.take_i16()
-                console.log("jogador",player_id,"saiu")
                 const other_player = this._other_clients.get(player_id)
                 if(other_player){
                     other_player.dead=true
@@ -361,7 +363,6 @@ class GameState {
                       player_x = msg.take_i16(),
                       player_y = msg.take_i16()
                 let other_player = this._other_clients.get(player_id)
-                console.log(player_id,player_x,player_y)
                 if(!other_player){
                     other_player = make(new Player(), {x : player_x, y: player_y})
                     this._other_clients.set(player_id,other_player)

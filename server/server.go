@@ -155,10 +155,7 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 		}
 	}()
 
-	client.CurrentMap = "cidade"
 	log.Println("botando o cliente na sala ", client.CurrentMap)
-
-	log.Println(s.maps[client.CurrentMap])
 
 	s.maps[client.CurrentMap].ActiveClients.AddLink(client_link)
 
@@ -295,6 +292,7 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 			Active:     true,
 			Connection: conn,
 			Id:         id,
+			CurrentMap: "cidade",
 			Player: Player{
 				X: 32*16 - 8,
 				Y: 14*16 - 8,

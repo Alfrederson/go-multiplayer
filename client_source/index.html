@@ -27,17 +27,23 @@
       }
 
       #debug {
-        display: block;
+        display: inline;
         position: absolute;
         left: 0px;
         top: 0px;
         z-index: 5;
-        width: 100%;
         font-family: monospace;
-        background:none;
+        background:rgba(0,0,0,0.5);
         font-weight: bolder;
         color:yellow;
-        font-size: 24px;
+        
+        margin: 1em;
+        padding: 0.1em;
+      }
+      #debug > p {
+        font-size: 1.2em;
+        margin: 0.1em;
+        transition: all 1s;
       }
 
       #text {
@@ -60,6 +66,6 @@
       </canvas>  
     </div>
 
-    <div id="debug"></div>
+    
   </body>
 </html>

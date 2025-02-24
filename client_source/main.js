@@ -23,9 +23,25 @@ import {
 } from "./config.js"
 import { Client } from "./game/client/client.js"
 
+const debug_div = document.getElementById("debug")
+
+export function debug_text(txt){
+  if(!debug_div)
+    return
+  let new_element = document.createElement("p")
+  new_element.innerText = txt
+  debug_div.appendChild(new_element)
+  setTimeout(()=>{
+    new_element.style.opacity = "0.0";
+    new_element.style.left = "-100%";
+  },1500)
+  setTimeout(()=>{
+    new_element.remove()
+  },2000)
+}
 
 /** @implements {IApp} */
-class CatGame {
+class MMORPG {
   gameState = new GameState()
   client = new Client()
 
@@ -62,7 +78,7 @@ class CatGame {
  * @property {function(string):void} toast
  */
 
-Start(new CatGame(), new WGL_B2D())
+Start(new MMORPG(), new WGL_B2D())
 
 export {
   SCREEN_WIDTH,
