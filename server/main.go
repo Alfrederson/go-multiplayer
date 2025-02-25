@@ -34,8 +34,8 @@ func main() {
 		ctx.JSON(200, server.Status())
 	})
 
-	r.Static("/client", "../client")
-	r.Static("/assets", "../client/assets")
+	r.Static("/client", "../client/dist")
+	r.Static("/assets", "../client/dist/assets")
 
 	log.Println("iniciando o servidor...")
 
