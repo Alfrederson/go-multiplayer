@@ -193,6 +193,7 @@ class WGL_B2D {
      */
     SetAngle(angle){
         this.rotation = angle
+        this.imageBuddy.setRotation(angle)
     }
 
     /**

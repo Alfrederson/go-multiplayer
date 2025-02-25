@@ -21,12 +21,12 @@ func main() {
 
 	r.Use(cors.Default())
 
-	r.Use(func(c *gin.Context) {
-		if c.Request.URL.Path == "/maps" || c.Request.URL.Path[:6] == "/maps/" {
-			c.Header("Cache-Control", "public, max-age=3600")
-		}
-		c.Next()
-	})
+	// r.Use(func(c *gin.Context) {
+	// 	if c.Request.URL.Path == "/maps" || c.Request.URL.Path[:6] == "/maps/" {
+	// 		c.Header("Cache-Control", "public, max-age=3600")
+	// 	}
+	// 	c.Next()
+	// })
 	r.Static("/maps", "../files/maps")
 
 	r.GET("/server", server.GetWSHandler())
@@ -35,8 +35,10 @@ func main() {
 	})
 
 	r.Static("/client", "../client")
+	r.Static("/assets", "../client/assets")
 
 	log.Println("iniciando o servidor...")
+
 	if err := r.Run("0.0.0.0:8080"); err != nil {
 		log.Fatal(err)
 	}

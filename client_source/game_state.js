@@ -202,9 +202,9 @@ class GameState {
                 if(this.target_map){
                     const msg = Message.Empty()
                     msg.put_i8(messages.PLAYER.ENTER_MAP)
-                    msg.put_i16(0)
-                    msg.put_short_string(this.target_map)
-                    msg.put_short_string(this.target_zone)
+                       .put_i16(0)
+                       .put_short_string(this.target_map)
+                       .put_short_string(this.target_zone)
                     this.game_client.send(msg.construct())
                     this.target_map = ""
                     return
@@ -223,12 +223,12 @@ class GameState {
                 }
                 if( will_send_status ){
                     will_send_status=false
-                    const message = Message.Empty()
-                    message.put_i8(messages.PLAYER.STATUS)
-                    message.put_i16(0)
-                    message.put_i16(this.player.x)
-                    message.put_i16(this.player.y)
-                    if(!client.send(message.construct())){
+                    const msg = Message.Empty()
+                    msg.put_i8(messages.PLAYER.STATUS)
+                       .put_i16(0)
+                       .put_i16(this.player.x)
+                       .put_i16(this.player.y)
+                    if(!client.send(msg.construct())){
                         clearInterval(interval)
                     }        
                 }
@@ -367,7 +367,7 @@ class GameState {
                     other_player = make(new Player(), {x : player_x, y: player_y})
                     this._other_clients.set(player_id,other_player)
 
-                    other_player.TurnOnRemoteControl()
+                    other_player.turnOnRemoteControl()
                     this.spawn(other_player)
                 }
                 other_player.remoteGoTo(player_x,player_y)

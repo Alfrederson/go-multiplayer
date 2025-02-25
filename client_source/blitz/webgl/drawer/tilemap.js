@@ -37,9 +37,7 @@ const fs_source = `
     void main(){
       vec2 b = inverse_map_pixel_size;
       vec4 tile = texture2D(tiles, pixel_coord * b ) * 255.0;
-      if(tile.b > 250.0){
-        discard;
-      }
+
       vec2 tile_coord = pixel_coord * inverse_tile_size;
       vec2 pixel_coord_in_tileset = fract(tex_coord) + tile.xy;
       gl_FragColor = texture2D(
@@ -48,6 +46,24 @@ const fs_source = `
       );
     }
 `
+
+function tile_buffer_from_array(array,tex_width,tex_height,tileset_cols){
+  const height = array.length
+  const width = array[0].length
+  const buffer = new Uint8Array(tex_width*tex_height*4)
+  for(let y = 0; y < height; y ++){
+    for(let x = 0; x < width; x++){
+      const cell = (y * tex_width + x)*4
+      const tile = array[y][x]
+      const tile_x = tile % tileset_cols
+      const tile_y = (tile / tileset_cols)|0
+      buffer[cell] = tile_x-1
+      buffer[cell+1] = tile_y
+      buffer[cell+2] = (x/width)*255
+    }
+  }
+  return buffer
+}
 
 export class TileMap{
   tiles
@@ -77,45 +93,7 @@ export class TileMap{
     this.tiles = data.map( x => x.map( y => y) )
   }
 
-  /**
-   * 
-   * @param {WebGLRenderingContext} ctx 
-   * @param {import("../image").WGLImage} tileset 
-   */
-  createTexture(ctx,tileset){
-    this.inverse_tileset_width = 1/tileset.width
-    this.inverse_tileset_height = 1/tileset.height
-
-    this.tile_width = tileset.frameWidth
-    this.tile_height = tileset.frameHeight
-    this.inverse_tile_width = 1/tileset.frameWidth
-    this.inverse_tile_height = 1/tileset.frameHeight
-
-
-    this.tileset_rows = tileset.height / tileset.frameHeight
-    this.tileset_cols = tileset.width / tileset.frameWidth
-    this.tex_width = nearestPowerOf2(this.width)
-    this.tex_height = nearestPowerOf2(this.height)
-
-    this.inverse_map_pixel_width = 1/(this.tex_width * this.tile_width)
-    this.inverse_map_pixel_height = 1/(this.tex_height * this.tile_height)    
-
-    const buffer = new Uint8Array(this.tex_width*this.tex_height*4)
-
-    for(let y = 0; y < this.height; y ++){
-      for(let x = 0; x < this.width; x++){
-        const cell = (y * this.tex_width + x)*4
-        const tile = this.tiles[y][x]
-        const tile_x = tile % this.tileset_cols
-        const tile_y = (tile / this.tileset_cols)|0
-        buffer[cell] = tile_x-1
-        buffer[cell+1] = tile_y
-        if(tile_x == 0){
-          buffer[cell+2] = 255
-        }
-      }
-    }
-
+  setTextureFromTileBuffer(ctx,tile_buffer,tex_width,tex_height){
     this.texture = ctx.createTexture()
     ctx.bindTexture(ctx.TEXTURE_2D,this.texture)
     ctx.texParameteri(ctx.TEXTURE_2D,ctx.TEXTURE_WRAP_S,ctx.CLAMP_TO_EDGE)
@@ -126,13 +104,36 @@ export class TileMap{
       ctx.TEXTURE_2D,
       0,
       ctx.RGBA,
-      this.tex_width,
-      this.tex_height,
+      tex_width,
+      tex_height,
       0,
       ctx.RGBA,
       ctx.UNSIGNED_BYTE,
-      buffer
+      tile_buffer
     )
+  }
+  updateTextureFromTileBuffer(ctx,tile_buffer,tex_width,tex_height){    
+  }
+  /**
+   * 
+   * @param {WebGLRenderingContext} ctx 
+   * @param {import("../image").WGLImage} tileset 
+   */
+  createTexture(ctx,tileset){
+    this.inverse_tileset_width = 1/tileset.width
+    this.inverse_tileset_height = 1/tileset.height
+    this.tile_width = tileset.frameWidth
+    this.tile_height = tileset.frameHeight
+    this.inverse_tile_width = 1/tileset.frameWidth
+    this.inverse_tile_height = 1/tileset.frameHeight
+    this.tileset_rows = tileset.height / tileset.frameHeight
+    this.tileset_cols = tileset.width / tileset.frameWidth
+    this.tex_width = nearestPowerOf2(this.width)
+    this.tex_height = nearestPowerOf2(this.height)
+    this.inverse_map_pixel_width = 1/(this.tex_width * this.tile_width)
+    this.inverse_map_pixel_height = 1/(this.tex_height * this.tile_height)    
+    const buffer = tile_buffer_from_array(this.tiles,this.tex_width,this.tex_height,this.tileset_cols)
+    this.setTextureFromTileBuffer(ctx,buffer,this.tex_width,this.tex_height)
   }
 
   updateTiles(new_tiles){

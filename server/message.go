@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"errors"
 )
 
@@ -18,6 +19,8 @@ const (
 	MSG_SERVER_PLAYER_SET_CELL
 	// informa ao cliente quem são os outros jogadores no mapa dele
 	MSG_SERVER_PLAYER_PEER_LIST
+	// mensagem diretamente do servidor para os clientes do chat
+	// MSG_SERVER_CHAT_SEND
 
 	// heartbeat
 	MSG_PLAYER_HEART
@@ -25,12 +28,49 @@ const (
 	MSG_PLAYER_STATUS
 	// quando o jogador quer entrar em um mapa diferente
 	MSG_PLAYER_ENTER_MAP
+	// quando o jogador envia uma mensagem no chat
+	MSG_PLAYER_CHAT_SEND
 	// quando um jogador tenta usar um quadrado (usar um npc, minerar um quadrado, fazendar um quadrado, atacar um quadrado, etc...)
 	MSG_PLAYER_USE_TILE
 )
 
 type Message struct {
-	bytes []byte
+	bytes   []byte
+	pointer int
+}
+
+func (m *Message) SetInt16(val int16, pos int) {
+	binary.BigEndian.PutUint16(m.bytes[pos:], uint16(val))
+}
+
+func (m *Message) Skip(n int) {
+	m.pointer += n
+}
+
+func (m *Message) TakeInt8() int {
+	num := int(m.bytes[m.pointer])
+	m.pointer++
+	return num
+}
+func (m *Message) TakeInt16() int {
+	num := int16(binary.BigEndian.Uint16(m.bytes[m.pointer:]))
+	m.pointer += 2
+	return int(num)
+}
+func (m *Message) TakeInt32() int {
+	num := int32(binary.BigEndian.Uint32(m.bytes[m.pointer:]))
+	m.pointer += 4
+	return int(num)
+}
+func (m *Message) TakeShortString() (string, error) {
+	length := int(m.bytes[m.pointer])
+	if m.pointer+length+1 > len(m.bytes) {
+		return "", errors.New("mensagem malformada")
+	}
+	result := make([]byte, length)
+	copy(result, m.bytes[m.pointer+1:m.pointer+1+length])
+	m.pointer += 1 + length
+	return string(result), nil
 }
 
 func (m *Message) IsServerMessage() bool {
@@ -45,14 +85,14 @@ func (m *Message) MessageByte() byte {
 // error se a mensagem foi malformada
 func (m *Message) GetShortString(pos int) (string, int, error) {
 	length := int(m.bytes[pos])
-	result := make([]byte, length)
+
 	if pos+length+1 > len(m.bytes) {
 		return "", 0, errors.New("mensagem malformada")
 	}
+	result := make([]byte, length)
 	copy(result, m.bytes[pos+1:pos+1+length])
 	return string(result), pos + 1 + length, nil
 }
-
 func (m *Message) GetInt8(pos int) int {
 	return int(m.bytes[pos])
 }

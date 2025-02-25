@@ -52,17 +52,20 @@ export class Message {
 
     put_i8(number){
         this.#buffer.push( number & 0xFF )
+        return this
     }
 
     put_i16(number){
         this.#buffer.push( number >> 8) & 0xFF
         this.#buffer.push ( number & 0xFF)
+        return this
     }
     put_i32(number){
         this.#buffer.push( number >> 24) & 0xFF
         this.#buffer.push( number >> 16) & 0xFF
         this.#buffer.push( number >> 8) & 0xFF
         this.#buffer.push ( number & 0xFF)
+        return this
     }
     /**
      * coloca um texto de até 255 caracteres
@@ -75,6 +78,7 @@ export class Message {
         for(let i = 0; i < len; i++){
             this.put_i8( str.charCodeAt(i) )
         }
+        return this
     }
     construct(){
         return new Uint8Array(this.#buffer)

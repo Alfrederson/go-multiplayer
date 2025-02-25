@@ -150,7 +150,7 @@ class Player {
         }
     }
 
-    TurnOnRemoteControl(){
+    turnOnRemoteControl(){
         this.remoteControlled = true
     }
 
@@ -159,20 +159,18 @@ class Player {
      * @param {number} deltaTime
      */
     update (s,deltaTime){
-
         if(this.remoteControlled){
             this.controlRemote(s,deltaTime)
         }else{
             this.controlLocal(s,deltaTime)
         }
-
     }
     /**
      * @param {IB2D} b
      * @param {GameState} s
      */
     render(b,s){
-        let frame = this.walking ? this.anim_walk.frame + this.direction*3 : this.direction*3+1
+        const frame = this.walking ? this.anim_walk.frame + this.direction*3 : this.direction*3+1
         b.DrawImageFrame(sprite,
             this.x - MARGIN_X,
             this.y - MARGIN_Y,

@@ -32,11 +32,11 @@
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 3,
-            "selectedLayer": 3,
+            "scale": 2,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 537.5,
-                "y": 38.999999999999986
+                "x": 104,
+                "y": 323.5
             }
         },
         "overworld.tsx": {
@@ -47,11 +47,11 @@
             "expandedObjectLayers": [
                 2
             ],
-            "scale": 2,
+            "scale": 1.5,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 305.25,
-                "y": 439
+                "x": 340.33333333333337,
+                "y": 203.99999999999997
             }
         }
     },
@@ -64,13 +64,13 @@
     "map.tileWidth": 16,
     "map.width": 40,
     "openFiles": [
-        "cidade.tmx",
-        "overworld.tsx"
+        "cidade.tmx"
     ],
     "project": "mmorpg-maps.tiled-project",
     "recentFiles": [
-        "overworld.tsx",
         "cidade.tmx",
+        "pedreira.tmx",
+        "overworld.tsx",
         "A:/dockers/mmorpg_maps/cidade.js"
     ],
     "tileset.lastUsedFormat": "tsx",

@@ -197,16 +197,20 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 		}
 
 		// faz algumas interpretações
-		switch message.MessageByte() {
+		msg_byte := message.TakeInt8()
+		message.Skip(2) // bytes do ID
+		switch msg_byte {
 
 		case MSG_PLAYER_STATUS:
 			{
-				// descarta
+				// tamanho fixo é mais fácil de fazer isso.
 				if len(msg) < 7 {
 					continue
 				}
-				(*client).Player.X = message.GetInt16(1)
-				(*client).Player.Y = message.GetInt16(3)
+				client.Player.X = message.TakeInt16()
+				client.Player.Y = message.TakeInt16()
+				// (*client).Player.X = message.GetInt16(1)
+				// (*client).Player.Y = message.GetInt16(3)
 				// a gente vai ter um sistema de células
 				// se a pessoa se move, só quem está na mesma célula
 				// que a pessoa está vai ver a pessoa
@@ -221,12 +225,14 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 		// e eu vou checar se o jogador está mesmo perto do portal
 		case MSG_PLAYER_ENTER_MAP:
 			{
-				map_name, target_pos, err := message.GetShortString(3)
+				map_name, err := message.TakeShortString()
 				if err != nil {
+					log.Println("lendo o mapa:", err)
 					continue
 				}
-				_, _, err = message.GetShortString(target_pos)
+				target_zone, err := message.TakeShortString()
 				if err != nil {
+					log.Println("lendo a zona:", err)
 					continue
 				}
 				_, existe := s.maps[map_name]
@@ -235,6 +241,8 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 					break
 				}
 				old_map := client.CurrentMap
+				log.Printf("jogador %d => zona %s => %s", client.Id, target_zone, map_name)
+
 				s.ChangeClientRoom(client, client_link, map_name)
 				s.Mapcast(old_map, client, MSG_SERVER_PLAYER_EXITED, id_bytes)
 				s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name))
