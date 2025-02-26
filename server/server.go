@@ -85,6 +85,14 @@ func (s *Server) ChangeClientRoom(client *Client, client_link *pecas.Link[Client
 	s.maps[(*client).CurrentMap].ActiveClients.AddLink(client_link)
 }
 
+func int_abs(val int) int {
+	if val < 0 {
+		return -val
+	} else {
+		return val
+	}
+}
+
 // envia uma mensagem para todos os clientes em um mapa
 func (s *Server) Mapcast(mapname string, from *Client, message byte, data ...[]byte) {
 	s.mutex.Lock()
@@ -95,7 +103,12 @@ func (s *Server) Mapcast(mapname string, from *Client, message byte, data ...[]b
 			fmt.Printf(" EEEPA! mensagem para %s chegando em %s!\n", mapname, c.CurrentMap)
 			return
 		}
-		if ((from != nil && ((*c).Connection != (*from).Connection)) || from == nil) && (*c).Active {
+		if ((from != nil && (c.Connection != from.Connection)) || from == nil) && c.Active {
+			// não repassa para quem estiver longe...
+			if int_abs(from.X-c.X) > 320 ||
+				int_abs(from.Y-c.Y) > 320 {
+				return
+			}
 			wsutil.WriteServerBinary((*c).Connection, msg)
 		}
 	})
@@ -235,17 +248,24 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 					log.Println("lendo a zona:", err)
 					continue
 				}
-				_, existe := s.maps[map_name]
+				mapa, existe := s.maps[map_name]
 				if !existe {
 					fmt.Printf("jogador tentando ir para mapa inexistente %s ", map_name)
 					break
 				}
+				portal, existe := mapa.Zones[target_zone]
+				if !existe {
+					fmt.Printf("jogador tentando ir para portal inexistente %s ", target_zone)
+				}
 				old_map := client.CurrentMap
 				log.Printf("jogador %d => zona %s => %s", client.Id, target_zone, map_name)
+				x, y := portal.PickPointForRect(14, 14)
 
 				s.ChangeClientRoom(client, client_link, map_name)
 				s.Mapcast(old_map, client, MSG_SERVER_PLAYER_EXITED, id_bytes)
-				s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name))
+
+				s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name), i16(x), i16(y))
+				// s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name))
 			}
 		}
 	}

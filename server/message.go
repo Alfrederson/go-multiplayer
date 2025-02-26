@@ -29,7 +29,7 @@ const (
 	// quando o jogador quer entrar em um mapa diferente
 	MSG_PLAYER_ENTER_MAP
 	// quando o jogador envia uma mensagem no chat
-	MSG_PLAYER_CHAT_SEND
+	MSG_PLAYER_CHAT
 	// quando um jogador tenta usar um quadrado (usar um npc, minerar um quadrado, fazendar um quadrado, atacar um quadrado, etc...)
 	MSG_PLAYER_USE_TILE
 )

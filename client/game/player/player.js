@@ -20,16 +20,17 @@ const HEIGHT = 14
 const MARGIN_X = (FRAME_WIDTH-WIDTH)/2
 const MARGIN_Y = (FRAME_HEIGHT-HEIGHT)
 
-const DIR_UP = 0
-const DIR_RIGHT = 1
-const DIR_DOWN = 2
-const DIR_LEFT = 3
+export const DIR_UP = 0
+export const DIR_RIGHT = 1
+export const DIR_DOWN = 2
+export const DIR_LEFT = 3
 
 class Player {    
     x = 128
     y = 64
 
     dead = false
+    hidden = false
 
     sx = 0
     sy = 0
@@ -108,16 +109,12 @@ class Player {
      * @param {number} deltaTime 
      */
     controlRemote(s,deltaTime){
-
         // interpolação pra ficar bunitim
         const now = performance.now()
         const elapsed = now - this.last_position_update_time
-
         const progress = Math.min(elapsed/100,1)
-
         this.x = this.oldX + (this.newX - this.oldX)*progress
         this.y = this.oldY + (this.newY - this.oldY)*progress
-
         this.sx = this.newX - this.oldX
         this.sy = this.newY - this.oldY
         if((Math.abs(this.sx) + Math.abs(this.sy)) >= 0.01){
@@ -136,15 +133,18 @@ class Player {
     remoteGoTo(x,y){
         // personagem acabou de ser spawnado
         // isso evita que ele apareça voando no mapa quando sai do mapa eu acho
+        // obs: como o servidor não propaga a mensagem do outro jogador
+        // se ele não estiver perto do meu, preciso dar um jeito de esconder
+        // e des-esconder o personagem de forma imperceptível
         const never_seen_before = this.last_position_update_time < 0
         this.last_position_update_time = performance.now()
-
         this.oldX = this.x
         this.oldY = this.y
-
         this.newX = x
         this.newY = y
         if(never_seen_before){
+            this.oldX = x
+            this.oldY = y
             this.x = x
             this.y = y
         }

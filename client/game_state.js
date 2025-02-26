@@ -5,7 +5,7 @@ import {
 
 import { GameMap } from "./game/game_map.js"
 import { ControlarPlayer } from "./game/player/controle.js"
-import { Player } from "./game/player/player.js"
+import { DIR_DOWN, Player } from "./game/player/player.js"
 import { constrain } from "./game/util.js"
 
 import * as messages from "./game/client/messages.js"
@@ -250,6 +250,9 @@ class GameState {
 
     /** método acionado localmente, indicando que esse jogador quer
      * trocar de mapa!
+     * aqui e agora a gente está especificando a target_zone, mas como
+     * o servidor sabe qual é a target_zone de cada portal, a gente na verdade
+     * vai ter que enviar só o nome do portal *nesse mapa* que foi acionado.
      * @param {string} map_name
      * @param {string} target_zone
      */
@@ -273,13 +276,14 @@ class GameState {
      */
     teleportPlayerTo(map_name, target ){
         const {x,y,zone} = target
+        let exit_dir = this.player ? this.player.direction : DIR_DOWN
         this.tileMap.loadFromServer(map_name).then( ()=>{
-            
             this._scene.reset()
             this._alives.reset()
             this._other_clients.clear()
-    
-            let pos_x,pos_y
+                let pos_x,pos_y
+            // OBS: remover esse conceito de target_zone porque o 
+            // servidor sempre vai mandar o x e y correto
             if(zone){
                 [pos_x,pos_y] = this.tileMap.pickPlaceInZone([14,14],zone)                
             }else{
@@ -300,6 +304,7 @@ class GameState {
             this.spawn(this.player)
                 .setTarget(this.player)
                 .snapTo(pos_x,pos_y)
+            this.player.direction=exit_dir
             ControlarPlayer(this,this.player)    
         })
     }
@@ -333,27 +338,9 @@ class GameState {
             // servidor quer me colocar em um mapa
             case messages.SERVER.PLAYER.SET_MAP:{
                 const map_name = msg.take_short_string()
-                if(this.target_zone){
-                    // isso é para quando eu quero me teletransportar
-                    // para uma zona diferente dentro de algum mapa.
-                    // não vai ser asism.
-                    // o servidor é que vai ler a zona dentro do mapa
-                    // (o servidor carrega uma cópia do mapa)
-                    // escolher um x,y lá dentro e me mandar.
-                    const zone = this.target_zone
-                    this.target_zone = ""
-                    this.teleportPlayerTo(map_name,{zone})
-                }else{
-                    // isso vai ser para quando o servidor
-                    // estiver persistindo as informações do jogador
-                    // mas antes de chegar lá preciso dar um jeito de criar a conta
-                    // e autenticar e blablabla
-                    // e eu não decidi como fazer isso.
-                    // provavelmente vai ser com o firebase.
                     const dest_x = msg.take_i16(), 
                           dest_y = msg.take_i16()    
                     this.teleportPlayerTo(map_name,{x:dest_x,y:dest_y})
-                }
             }break;
             // ------------------------------------------------------------------
             // mensagens de jogador
@@ -371,6 +358,11 @@ class GameState {
                     this.spawn(other_player)
                 }
                 other_player.remoteGoTo(player_x,player_y)
+            }break;
+            case messages.PLAYER.CHAT:{
+                const from_player = msg.take_i16()
+                const text = msg.take_short_string()
+                debug_text(`player${from_player}:${text}`)
             }break;
         }
     }

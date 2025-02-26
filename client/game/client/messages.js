@@ -1,16 +1,18 @@
 export const SERVER = {
-    SET_ID : 0x01,
+    SET_ID : 1,
     PLAYER : {
-        JOINED : 0x02,
-        EXITED : 0x03,
-        SET_MAP : 0x04,
-        SET_CELL : 0x05,
-        PEER_LIST : 0x06
+        JOINED : 2,
+        EXITED : 3,
+        SET_MAP : 4,
+        SET_CELL : 5,
+        PEER_LIST : 6
     }    
 }
 
 export const PLAYER = {
-    HEART : 0x07,
-    STATUS : 0x08,
-    ENTER_MAP : 0x09
+    HEART : 7,
+    STATUS : 8,
+    ENTER_MAP : 9,
+    CHAT : 10,
+    USE_TILE : 11 // quando a gente for minerar, fazendar, etc.
 }
