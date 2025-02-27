@@ -212,10 +212,7 @@ class WGL_B2D {
      * @param {number} a
      */
     SetColor(r,g,b,a){
-        this.drawColor[0] = r
-        this.drawColor[1] = g
-        this.drawColor[2] = b
-        this.drawColor[3] = a
+        this.imageBuddy.setColor(r,g,b,a)
     }
 
 

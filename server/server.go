@@ -94,7 +94,7 @@ func int_abs(val int) int {
 }
 
 // envia uma mensagem para todos os clientes em um mapa
-func (s *Server) Mapcast(mapname string, from *Client, message byte, data ...[]byte) {
+func (s *Server) Mapcast(mapname string, from *Client, x int, y int, message byte, data ...[]byte) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	msg := construct_message(message, data...)
@@ -105,8 +105,8 @@ func (s *Server) Mapcast(mapname string, from *Client, message byte, data ...[]b
 		}
 		if ((from != nil && (c.Connection != from.Connection)) || from == nil) && c.Active {
 			// não repassa para quem estiver longe...
-			if int_abs(from.X-c.X) > 320 ||
-				int_abs(from.Y-c.Y) > 320 {
+			if int_abs(x-c.X) > 320 ||
+				int_abs(y-c.Y) > 320 {
 				return
 			}
 			wsutil.WriteServerBinary((*c).Connection, msg)
@@ -140,7 +140,7 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 
 	defer func() {
 		// notifica os outros jogadores de que este aqui saiu
-		s.Mapcast(client.CurrentMap, client, MSG_SERVER_PLAYER_EXITED, id_bytes)
+		s.Mapcast(client.CurrentMap, client, client.X, client.Y, MSG_SERVER_PLAYER_EXITED, id_bytes)
 
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
@@ -182,7 +182,7 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 
 	// Notifica os outros do mapa que ele entrou...
 	log.Println("notificando que o jogador entrou")
-	s.Mapcast(client.CurrentMap, client, MSG_SERVER_PLAYER_JOINED, id_bytes)
+	s.Mapcast(client.CurrentMap, client, client.X, client.Y, MSG_SERVER_PLAYER_JOINED, id_bytes)
 
 	// estatísticas
 	for {
@@ -232,7 +232,16 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 				// naquela célula
 				// a gente também vai usar os portais definidos no mapa
 				// pra decidir para qual outro mapa a pessoa teletransporta
-				s.Mapcast(client.CurrentMap, client, message.MessageByte(), message.bytes[1:])
+				s.Mapcast(client.CurrentMap, client, client.X, client.Y, message.MessageByte(), message.bytes[1:])
+			}
+		case MSG_PLAYER_CHAT:
+			{
+				chat, err := message.TakeShortString()
+				if err != nil {
+					continue
+				}
+				fmt.Printf("%d > %s\n", client.Id, chat)
+				s.Mapcast(client.CurrentMap, nil, client.X, client.Y, message.MessageByte(), message.bytes[1:])
 			}
 		// na verdade isso vai ser uma mensagem "PLAYER_USE_PORTAL"
 		// e eu vou checar se o jogador está mesmo perto do portal
@@ -258,12 +267,12 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 					fmt.Printf("jogador tentando ir para portal inexistente %s ", target_zone)
 				}
 				old_map := client.CurrentMap
-				log.Printf("jogador %d => zona %s => %s", client.Id, target_zone, map_name)
 				x, y := portal.PickPointForRect(14, 14)
+				log.Printf("jogador %d => %s.%s (%d,%d)", client.Id, map_name, target_zone, x, y)
+
+				s.Mapcast(old_map, client, client.X, client.Y, MSG_SERVER_PLAYER_EXITED, id_bytes)
 
 				s.ChangeClientRoom(client, client_link, map_name)
-				s.Mapcast(old_map, client, MSG_SERVER_PLAYER_EXITED, id_bytes)
-
 				s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name), i16(x), i16(y))
 				// s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name))
 			}

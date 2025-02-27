@@ -35,6 +35,10 @@ function AttachInput(width, height, canvasElementId){
 
     input.canvasElement = el
 
+    input.canvasElement.addEventListener("click", ev =>{
+        document.activeElement.blur()
+    })
+
     input.canvasElement.addEventListener("mousemove", ev =>{
         input.oldMouseX = input.mouseX
         input.oldMouseY = input.mouseY

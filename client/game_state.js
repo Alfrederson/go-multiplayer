@@ -13,7 +13,7 @@ import * as util from "./game/client/util.js"
 
 import Stack from "./stack.js"
 import { Message } from "./game/client/client.js"
-import { debug_text } from "./main.js"
+import { chag_message, debug_text } from "./main.js"
 
 
 const MAX_THINGS = 500
@@ -162,6 +162,7 @@ class GameState {
      */
     render(b) {
         b.Cls(152, 34, 137)
+        b.SetColor(1,1,1,1)
 
         if(!this.tileMap.loaded){
             return
@@ -260,6 +261,14 @@ class GameState {
         debug_text("entering "+map_name+"...")
         this.target_zone = target_zone
         this.target_map = map_name
+    }
+
+    sendChat(string){
+        const msg = Message.Empty()
+        msg.put_i8(messages.PLAYER.CHAT)
+        msg.put_i16(0)
+        msg.put_short_string(string)
+        this.game_client.send(msg.construct())
     }
 
     /**
@@ -362,7 +371,7 @@ class GameState {
             case messages.PLAYER.CHAT:{
                 const from_player = msg.take_i16()
                 const text = msg.take_short_string()
-                debug_text(`player${from_player}:${text}`)
+                chag_message(`player${from_player}:${text}`)
             }break;
         }
     }

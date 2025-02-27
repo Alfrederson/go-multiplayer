@@ -11,6 +11,7 @@ Preload(async b => {
 const NUB_SIZE = 128
 
 class Nub {
+  hidden = true
   dead = false
   x = 0
   y = 0
@@ -40,7 +41,11 @@ class Nub {
    * @param {IB2D} b - B2D
    * */
   renderUi(b) {
-
+    if(this.hidden){
+      b.SetColor(0,0,0,0)
+    }else{
+      b.SetColor(1,1,1,1)
+    }
     b.SetScale(1, 1)
     let angulo = Math.atan2(-this.dy , this.dx)
     let length = constrain( Math.sqrt(this.dx*this.dx + this.dy*this.dy), 0, NUB_SIZE*0.25)

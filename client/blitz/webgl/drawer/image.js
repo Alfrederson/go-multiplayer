@@ -184,6 +184,12 @@ export class ImageDrawer {
         this.#scale[0] = x
         this.#scale[1] = y
     }
+    setColor(r,g,b,a){
+        this.#drawColor[0] = r
+        this.#drawColor[1] = g
+        this.#drawColor[2] = b
+        this.#drawColor[3] = a
+    }
 
     constructor(ctx, width, height){
         // compila o shader maneiro

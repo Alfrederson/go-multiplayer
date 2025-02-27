@@ -35,6 +35,7 @@ class Animation{
         this.currentFrameDelay = frameDelay
     }
 
+    // isso tem que ter um deltatime pra ficar direito no celular...
     update(){
         if(--this.currentFrameDelay == 0){
             this.currentFrameDelay = this.frameDelay            

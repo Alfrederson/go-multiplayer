@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pig App</title>
+    <link rel="stylesheet" href="https://unpkg.com/tachyons@4.12.0/css/tachyons.min.css"/>
+    <title>La Pocilga</title>
     <style>
       body {
         margin: 0px;
@@ -53,19 +54,44 @@
         pointer-events:none;
       }
 
+      .chat-message {
+        color: lime;
+      }
+      .ui {
+        position: fixed;
+        bottom:0px;
+        left:0px;
+        right:0px;
+        z-index: 200;
+      }
+
     </style>
   </head>
   <body>
     <p id="debug" style="position:absolute"></p>
     <script type="module" src="/main.js"></script>
-
     <div class="container">
       <canvas id="game">
       </canvas>
       <canvas id="text">
       </canvas>  
+      <div class="ui" class="w-20-l">
+        <form id="chat">
+          <div id="chat-closed">
+            <div class="cf pa2">
+              <div class="f6 f5-l input-reset bn fl black-80 pa3 w-90"></div>
+              <input class="bg-blue f6 button-reset pv3 bn white pointer w-10" type="button" value="💬" id="btn-open-chat">
+            </div>
+          </div>
+          <div id="chat-open" style="display:none">
+            <div class="cf pa2">
+              <input class="f6 f5-l button-reset fl pv3 tc bn bg-blue white pointer w-10 br2-ns br--left-ns" type="button" value="❌" id="btn-close-chat">
+              <input class="f6 f5-l input-reset bn fl black-80 bg-white pa3 lh-solid w-80" type="text" autocomplete="off" value="" id="input-chat">
+              <input class="f6 f5-l button-reset fl pv3 tc bn bg-blue white pointer w-10 br2-ns br--right-ns" type="submit" value="▶" id="btn-send-chat">
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
-
-    
   </body>
 </html>

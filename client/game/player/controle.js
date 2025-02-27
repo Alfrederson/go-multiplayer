@@ -21,7 +21,7 @@ function ControlarPlayer(state, player) {
     // gatinho começa a andar
     OnTouchStart(touches => {
         using_touch = true
-
+        nub_walk.hidden=false
         for (let i = 0; i < touches.length; i++) {
             let { x, y, n } = touches[i];
             for (let nub of nubs) {
@@ -64,6 +64,7 @@ function ControlarPlayer(state, player) {
     const keys = {}
     document.addEventListener("keydown",event=>{
         using_touch=false
+        nub_walk.hidden=true
         keys[event.key] = true
     })
     document.addEventListener("keyup",event=>{
