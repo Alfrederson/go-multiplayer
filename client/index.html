@@ -10,6 +10,7 @@
         margin: 0px;
         padding: 0px;
         height: 100vh;
+        touch-action: none;
         width: 100vw;
         display: flex;
         overflow:hidden;
@@ -22,11 +23,9 @@
         display: block;
         cursor:crosshair;
       }
-
       .container{
-        margin:auto;
+        margin: auto;
       }
-
       #debug {
         display: inline;
         position: absolute;
@@ -53,28 +52,39 @@
         top: 0px;
         pointer-events:none;
       }
-
       .chat-message {
         color: lime;
       }
-      .ui {
+      .game-container {
         position: fixed;
-        bottom:0px;
-        left:0px;
-        right:0px;
-        z-index: 200;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height:100vh;
+        flex-flow:column;        
+      }
+      .chat-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        z-index:3;
       }
 
     </style>
   </head>
   <body>
-    <p id="debug" style="position:absolute"></p>
-    <script type="module" src="/main.js"></script>
-    <div class="container">
-      <canvas id="game">
-      </canvas>
-      <canvas id="text">
-      </canvas>  
+    <div class="game-container">
+      <p id="debug" style="position:absolute"></p>
+      <script type="module" src="/main.js"></script>
+      <div class="container">
+        <canvas id="game">
+        </canvas>
+        <canvas id="text">
+        </canvas>  
+      </div>
+    </div>
+    <div class="chat-container">
       <div class="ui" class="w-20-l">
         <form id="chat">
           <div id="chat-closed">
@@ -91,7 +101,7 @@
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </div>        
+    </div>    
   </body>
 </html>

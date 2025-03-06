@@ -175,6 +175,19 @@ const _preloadFunctions = []
 
 async function Start(game, b2d){
 
+    window.visualViewport.addEventListener("resize", () => {
+        let chatContainer = document.querySelector(".chat-container");
+    
+        if (window.visualViewport.height < window.innerHeight) {
+            // Keyboard is open → Move chat up
+            chatContainer.style.bottom = (window.innerHeight - window.visualViewport.height) + "px";
+        } else {
+            // Keyboard is closed → Reset position
+            chatContainer.style.bottom = "0";
+        }
+    });
+    
+
     const drawer = i => game.draw(i)
     
     function draw(){
