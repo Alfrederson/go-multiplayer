@@ -141,6 +141,7 @@ function make(x, properties){
 
     if(properties){
         for(let k of Object.keys(properties)){
+            // @ts-ignore
             x[k] = properties[k]
         }
     }
@@ -165,6 +166,9 @@ function Preload(fn){
     _preloadFunctions.push(fn)
 }
 
+/**
+ * @type {((arg0: IB2D) => void)[]}
+ */
 const _preloadFunctions = []
 
 /**
@@ -175,20 +179,7 @@ const _preloadFunctions = []
 
 async function Start(game, b2d){
 
-    window.visualViewport.addEventListener("resize", () => {
-        let chatContainer = document.querySelector(".chat-container");
-    
-        if (window.visualViewport.height < window.innerHeight) {
-            // Keyboard is open → Move chat up
-            chatContainer.style.bottom = (window.innerHeight - window.visualViewport.height) + "px";
-        } else {
-            // Keyboard is closed → Reset position
-            chatContainer.style.bottom = "0";
-        }
-    });
-    
-
-    const drawer = i => game.draw(i)
+    const drawer = game.draw.bind(game)
     
     function draw(){
         b2d.Draw( drawer ) 

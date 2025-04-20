@@ -2,6 +2,9 @@ import { IB2D, Preload } from "../blitz/blitz"
 import { GameState } from "../game_state"
 import { constrain } from "./util"
 
+/**
+ * @type {import("../blitz/blitz").IImage}
+ */
 let nubSprite
 
 Preload(async b => {
@@ -25,6 +28,10 @@ class Nub {
   releasedY = 0
   holdX = 0
   holdY = 0
+  /**
+   * @param {number} _x
+   * @param {number} _y
+   */
   constructor(_x, _y) {
     this.x = _x-NUB_SIZE/2
     this.y = _y-NUB_SIZE/2
@@ -80,10 +87,19 @@ class Nub {
     this.justReleased = false
     return r
   }
+  /**
+   * @param {number} x
+   * @param {number} y
+   */
   move(x,y){
     this.dx = x - this.holdX
     this.dy = y - this.holdY
   }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} n
+   */
   press(x,y, n){
     this.holdX = x
     this.holdY = y

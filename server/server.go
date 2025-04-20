@@ -6,29 +6,18 @@ import (
 	"net"
 	"sync"
 
+	"github.com/Alfrederson/backend_game/entities"
 	"github.com/Alfrederson/backend_game/pecas"
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 )
 
-type Player struct {
-	Id         int    `json:"id"`
-	PlayerName string `json:"player_name"`
-	X          int    `json:"x"`
-	Y          int    `json:"y"`
-}
-
 type Client struct {
-	Player
-	CurrentMap string
-	Id         int
+	entities.Player
+	Spot       int
 	Connection net.Conn
 	Active     bool
-}
-
-func get_int16(bytes []byte, pos int) int {
-	return (int(bytes[pos]) << 8) | int(bytes[pos+1])
 }
 
 // um mapa tem:
@@ -38,14 +27,18 @@ func get_int16(bytes []byte, pos int) int {
 //   - quando uma mensagem é publicada, ela é enviada
 //   - a todas as células próximas à célula de origem
 
+type ServerMap struct {
+	entities.GameMap
+	ActiveClients pecas.List[Client]
+}
+
 type Server struct {
 	TotalPlayers int
 	MaxPlayers   int
 
-	mutex         sync.Mutex
-	message_count int
+	mutex sync.Mutex
 
-	maps map[string]*GameMap
+	maps map[string]*ServerMap
 
 	free_spots   pecas.Stack[int]
 	free_clients pecas.List[Client]
@@ -134,9 +127,9 @@ func (s *Server) Broadcast(from *Client, message byte, data ...[]byte) {
 
 func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 	client := client_link.Value
-	id_bytes := i16(client.Id)
+	id_bytes := i16(client.Spot)
 
-	log.Printf("cliente pegou o spot %d", client.Id)
+	log.Printf("cliente pegou o spot %d", client.Spot)
 
 	defer func() {
 		// notifica os outros jogadores de que este aqui saiu
@@ -146,8 +139,8 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 		defer s.mutex.Unlock()
 
 		// libera o ID
-		s.free_spots.Push(client.Id)
-		log.Printf("spot %d agora está livre", client.Id)
+		s.free_spots.Push(client.Spot)
+		log.Printf("spot %d agora está livre", client.Spot)
 
 		// fecha a conexão
 		(*client).Connection.Close()
@@ -159,13 +152,11 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 		// retorna para o pool
 		s.free_clients.AddLink(client_link)
 
+		// persiste o jogador
+		client.Player.Save()
+
 		// reseta o cliente
-		*client = Client{
-			Connection: nil,
-			Active:     false,
-			Id:         0,
-			CurrentMap: "",
-		}
+		*client = Client{}
 	}()
 
 	log.Println("botando o cliente na sala ", client.CurrentMap)
@@ -222,8 +213,6 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 				}
 				client.Player.X = message.TakeInt16()
 				client.Player.Y = message.TakeInt16()
-				// (*client).Player.X = message.GetInt16(1)
-				// (*client).Player.Y = message.GetInt16(3)
 				// a gente vai ter um sistema de células
 				// se a pessoa se move, só quem está na mesma célula
 				// que a pessoa está vai ver a pessoa
@@ -240,7 +229,7 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 				if err != nil {
 					continue
 				}
-				fmt.Printf("%d > %s\n", client.Id, chat)
+				fmt.Printf("%d > %s\n", client.Spot, chat)
 				s.Mapcast(client.CurrentMap, nil, client.X, client.Y, message.MessageByte(), message.bytes[1:])
 			}
 		// na verdade isso vai ser uma mensagem "PLAYER_USE_PORTAL"
@@ -268,13 +257,12 @@ func (s *Server) StartSession(client_link *pecas.Link[Client]) {
 				}
 				old_map := client.CurrentMap
 				x, y := portal.PickPointForRect(14, 14)
-				log.Printf("jogador %d => %s.%s (%d,%d)", client.Id, map_name, target_zone, x, y)
+				log.Printf("jogador %d => %s.%s (%d,%d)", client.Spot, map_name, target_zone, x, y)
 
 				s.Mapcast(old_map, client, client.X, client.Y, MSG_SERVER_PLAYER_EXITED, id_bytes)
 
 				s.ChangeClientRoom(client, client_link, map_name)
 				s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name), i16(x), i16(y))
-				// s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name))
 			}
 		}
 	}
@@ -298,7 +286,7 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 
 	for i := 0; i < s.MaxPlayers; i++ {
 		link := pecas.NewLink(&Client{
-			Id:         0,
+			Spot:       0,
 			Connection: nil,
 			Active:     false,
 		})
@@ -325,16 +313,28 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 			return
 		}
 		id, _ := s.free_spots.Pop()
+
+		// todo: a gente vai tirar o ID do jogador de dentro do usuário autenticado
+		//       e carregar as coisas dele
 		*link.Value = Client{
 			Active:     true,
 			Connection: conn,
-			Id:         id,
-			CurrentMap: "cidade",
-			Player: Player{
-				X: 32*16 - 8,
-				Y: 14*16 - 8,
+			Spot:       id,
+			Player: entities.Player{
+				CurrentMap: "cidade",
+				Id:         123,
+				X:          512,
+				Y:          262,
+				Bag: entities.Bag{
+					MaxItems:  10,
+					MaxWeight: 15000,
+				},
 			},
 		}
+		link.Value.Player.Load()
+		link.Value.Bag.Add(entities.Maca{})
+		link.Value.Bag.Add(entities.Sementes{Planta: "macieira"})
+
 		go s.StartSession(link)
 	}
 }

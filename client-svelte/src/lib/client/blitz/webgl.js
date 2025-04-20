@@ -63,11 +63,11 @@ class WGL_B2D {
     /** @type {boolean} */
     initialized = false
 
-    /** @type {WebGLRenderingContext} */
-    ctx
+    /** @type {WebGLRenderingContext?} */
+    ctx = null
 
-    /** @type {import("./webgl/render_to_texture.js").RenderTarget} */
-    renderTarget
+    /** @type {import("./webgl/render_to_texture.js").RenderTarget?} */
+    renderTarget = null
 
     scale = [1,1]
     rotation = 0
@@ -82,21 +82,31 @@ class WGL_B2D {
 
 
 
-    /** @type { ImageDrawer } */
-    imageBuddy
+    /** @type { ImageDrawer? } */
+    imageBuddy = null
 
-    /** @type { TileMapDrawer } */
-    tileBuddy
+    /** @type { TileMapDrawer? } */
+    tileBuddy = null
 
     /**
      * Carrega uma imagem.
      * @param {string} imageName 
      */
     async LoadImage(imageName){
-        return image.loadImage( this.ctx, imageName,0,0 )
+        if(!this.ctx)
+            throw "não consigo carregar imagem porque o contexto não foi inicializado."
+        return image.loadImage( this.ctx , imageName,0,0 )
     }
 
+    /**
+     * @param {string} imageName
+     * @param {number} frameWidth
+     * @param {number} frameHeight
+     */
     async LoadAnimImage(imageName,frameWidth, frameHeight){
+        if(!this.ctx)
+            throw "não consigo carregar imagem porque o contexto não foi inicializado."
+
         return image.loadImage( this.ctx, imageName,frameWidth,frameHeight )
     }
     /**
@@ -182,6 +192,8 @@ class WGL_B2D {
      * @param {number} b 
      */
     Cls(r,g,b){
+        if(!this.ctx)
+            throw "não consigo limpar a tela porque o contexto não foi inicializado"
         canvas2d.clear( this.ctx2d )
         this.ctx.clearColor(r/255,g/255,b/255,1.0)
         this.ctx.clear(this.ctx.COLOR_BUFFER_BIT)        
@@ -193,7 +205,7 @@ class WGL_B2D {
      */
     SetAngle(angle){
         this.rotation = angle
-        this.imageBuddy.setRotation(angle)
+        this.imageBuddy?.setRotation(angle)
     }
 
     /**
@@ -212,7 +224,7 @@ class WGL_B2D {
      * @param {number} a
      */
     SetColor(r,g,b,a){
-        this.imageBuddy.setColor(r,g,b,a)
+        this.imageBuddy?.setColor(r,g,b,a)
     }
 
 
@@ -231,7 +243,7 @@ class WGL_B2D {
      * @param {number} y
      */
     DrawImage(imageHandler, x, y){
-        this.imageBuddy.drawImage(
+        this.imageBuddy?.drawImage(
             this.ctx,
             imageHandler,
             x- this.camX,
@@ -245,7 +257,7 @@ class WGL_B2D {
      * @param {number} frame
      */
     DrawImageFrame(imageHandler, x, y, frame){
-        this.imageBuddy.drawImageFrame(
+        this.imageBuddy?.drawImageFrame(
             this.ctx,
             imageHandler,
             x-this.camX,
@@ -254,8 +266,16 @@ class WGL_B2D {
         )
     }
 
+    /**
+     * @param {import("./webgl/drawer/tilemap.js").TileMap} tilemapHandler
+     * @param {image.WGLImage} imageHandler
+     * @param {number} x
+     * @param {number} y
+     */
     DrawTilemap(tilemapHandler, imageHandler, x,y){
-        this.tileBuddy.drawTilemap(this.ctx,tilemapHandler,imageHandler,x,y)
+        if(!this.ctx)
+            throw "não consigo desenhar o tilemap porque o contexto não foi inicializado"
+        this.tileBuddy?.drawTilemap(this.ctx,tilemapHandler,imageHandler,x,y)
     }
     
     /**
@@ -272,7 +292,11 @@ class WGL_B2D {
      * @param {(arg0: IB2D) => void} callback
      */
     Draw( callback ){
-        render_to_texture.begin( this.ctx, this.renderTarget)
+        if(!this.ctx)
+            throw "não consigo desenhar porque o contexto não foi inicializado"
+        if(!this.renderTarget)
+            throw "não consigo desenhar porque não tenho um renderTarget"
+        render_to_texture.begin( this.ctx, this.renderTarget )
         callback( this )
         render_to_texture.end( this.ctx, this.renderTarget )
     }

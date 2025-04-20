@@ -7,6 +7,9 @@ import { SERVER_MAP_URL, SERVER_URL } from "../config"
 
 import { Sensor } from "./sensor/sensor"
 
+/**
+ * @type {import("../blitz/blitz").IImage}
+ */
 let tileset
 
 
@@ -19,9 +22,9 @@ Preload(async b => {
 
 class Portal extends Sensor {
     /** @type {string} */
-    to_map
+    to_map = ""
     /** @type {string} */
-    to_zone
+    to_zone = ""
 }
 
 /**
@@ -57,6 +60,7 @@ class GameMap {
         [[0]]
     ]
 
+    /** @type {TileMap[]} */
     layers = []
 
     /** @type {Portal[]} */
@@ -78,11 +82,11 @@ class GameMap {
         this.height = this.tiles.length
     }
 
+    /**
+     * @param {import("./interfaces").ICollider} target
+     */
     activateSensors(target){
-        console.log("ativando sensores...")
-        this.sensors.forEach( sensor => {
-            sensor.target = target
-        })
+        this.sensors.forEach( sensor => sensor.target = target )
     }
 
     /**
@@ -100,6 +104,9 @@ class GameMap {
         return [(zone.x + zone.width/2) , (zone.y + zone.height/2)]
     }
 
+    /**
+     * @param {{ [x: string]: number; layers: any; }} tiled
+     */
     fromTiled(tiled){
         let thisTile = 0
         this.width = tiled["width"]
@@ -134,7 +141,7 @@ class GameMap {
                                 if(coisa.properties){
                                     coisa.properties.forEach( p =>{
                                         if(Object.hasOwn(sensor,p.name)){
-                                            sensor[p.name] = p.value
+                                            Object.defineProperty(sensor,p.name,p)
                                         }
                                     })
                                 }
@@ -162,6 +169,9 @@ class GameMap {
         }
     }
 
+    /**
+     * @param {string} map_name
+     */
     async loadFromServer(map_name){
         this.loaded = false
         let result = await fetch(SERVER_MAP_URL + map_name + ".json")
