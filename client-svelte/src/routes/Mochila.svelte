@@ -1,3 +1,6 @@
+<script>
+    let open = $state(false)
+</script>
 <style>
     .item {
         text-align: center;
@@ -13,7 +16,7 @@
         background-color:var(--bs-dark);
     }
 </style>
-{#if false}
+{#if open}
 <div class="layer" style="z-index:11;user-select: none;  margin:auto;">
     <div class="modal" style="background-color: rgba(0,0,0,0.5); margin-left:4.5rem;margin-right:4.5rem; border:none; display:block;">
         <div class="modal-dialog">

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"sync"
 
 	"github.com/Alfrederson/backend_game/entities"
+	"github.com/Alfrederson/backend_game/fb"
 	"github.com/Alfrederson/backend_game/pecas"
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
@@ -18,6 +20,7 @@ type Client struct {
 	Spot       int
 	Connection net.Conn
 	Active     bool
+	Link       *pecas.Link[Client]
 }
 
 // um mapa tem:
@@ -38,7 +41,8 @@ type Server struct {
 
 	mutex sync.Mutex
 
-	maps map[string]*ServerMap
+	player_by_id map[string]*entities.Player
+	maps         map[string]*ServerMap
 
 	free_spots   pecas.Stack[int]
 	free_clients pecas.List[Client]
@@ -69,13 +73,13 @@ func (s *Server) Send(to *Client, message byte, data ...[]byte) {
 	wsutil.WriteServerBinary((*to).Connection, construct_message(message, data...))
 }
 
-func (s *Server) ChangeClientRoom(client *Client, client_link *pecas.Link[Client], to_room string) {
+func (s *Server) ChangeClientRoom(client *Client, to_room string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.maps[(*client).CurrentMap].ActiveClients.RemoveLink(client_link)
+	s.maps[(*client).CurrentMap].ActiveClients.RemoveLink((*client).Link)
 	(*client).CurrentMap = to_room
-	s.maps[(*client).CurrentMap].ActiveClients.AddLink(client_link)
+	s.maps[(*client).CurrentMap].ActiveClients.AddLink((*client).Link)
 }
 
 func int_abs(val int) int {
@@ -125,177 +129,35 @@ func (s *Server) Broadcast(from *Client, message byte, data ...[]byte) {
 	}
 }
 
-func (s *Server) StartSession(client_link *pecas.Link[Client]) {
-	client := client_link.Value
-	id_bytes := i16(client.Spot)
-
-	log.Printf("cliente pegou o spot %d", client.Spot)
-
-	defer func() {
-		// notifica os outros jogadores de que este aqui saiu
-		s.Mapcast(client.CurrentMap, client, client.X, client.Y, MSG_SERVER_PLAYER_EXITED, id_bytes)
-
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
-
-		// libera o ID
-		s.free_spots.Push(client.Spot)
-		log.Printf("spot %d agora está livre", client.Spot)
-
-		// fecha a conexão
-		(*client).Connection.Close()
-
-		// tira o cliente do mapa em que ele está
-		log.Println("removendo o cliente de ", client.CurrentMap)
-		s.maps[(*client).CurrentMap].ActiveClients.RemoveLink(client_link)
-
-		// retorna para o pool
-		s.free_clients.AddLink(client_link)
-
-		// persiste o jogador
-		client.Player.Save()
-
-		// reseta o cliente
-		*client = Client{}
-	}()
-
-	log.Println("botando o cliente na sala ", client.CurrentMap)
-
-	s.maps[client.CurrentMap].ActiveClients.AddLink(client_link)
-
-	// diz par ao jogador qual é o ID dele
-	s.Send(client, MSG_SERVER_SETID, id_bytes)
-	// diz para o jogador quem são os outros jogadores que estão lá
-	// (esse é difícil)
-
-	// manda o jogador entrar em um mapa
-	s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(client.CurrentMap), i16(client.X), i16(client.Y))
-
-	// Notifica os outros do mapa que ele entrou...
-	log.Println("notificando que o jogador entrou")
-	s.Mapcast(client.CurrentMap, client, client.X, client.Y, MSG_SERVER_PLAYER_JOINED, id_bytes)
-
-	// estatísticas
-	for {
-		// o segundo valor é op
-		msg, op, err := wsutil.ReadClientData(client.Connection)
-		if err != nil {
-			log.Println("erro de leitura ", op, err)
-			break
-		}
-
-		// descarta a mensagem se for menor do que a mínima
-		if len(msg) < 3 {
-			continue
-		}
-
-		// identifica a mensagem
-		msg[1] = id_bytes[0]
-		msg[2] = id_bytes[1]
-
-		message := Message{bytes: msg}
-
-		// jogador tentando enviar uma mensagem de servidor
-		if message.IsServerMessage() {
-			continue
-		}
-
-		// faz algumas interpretações
-		msg_byte := message.TakeInt8()
-		message.Skip(2) // bytes do ID
-		switch msg_byte {
-
-		case MSG_PLAYER_STATUS:
-			{
-				// tamanho fixo é mais fácil de fazer isso.
-				if len(msg) < 7 {
-					continue
-				}
-				client.Player.X = message.TakeInt16()
-				client.Player.Y = message.TakeInt16()
-				// a gente vai ter um sistema de células
-				// se a pessoa se move, só quem está na mesma célula
-				// que a pessoa está vai ver a pessoa
-				// quando a pessoa sai de uma célula para a outra, o servidor
-				// manda a mensagem que indica quem está
-				// naquela célula
-				// a gente também vai usar os portais definidos no mapa
-				// pra decidir para qual outro mapa a pessoa teletransporta
-				s.Mapcast(client.CurrentMap, client, client.X, client.Y, message.MessageByte(), message.bytes[1:])
-			}
-		case MSG_PLAYER_CHAT:
-			{
-				chat, err := message.TakeShortString()
-				if err != nil {
-					continue
-				}
-				fmt.Printf("%d > %s\n", client.Spot, chat)
-				s.Mapcast(client.CurrentMap, nil, client.X, client.Y, message.MessageByte(), message.bytes[1:])
-			}
-		// na verdade isso vai ser uma mensagem "PLAYER_USE_PORTAL"
-		// e eu vou checar se o jogador está mesmo perto do portal
-		case MSG_PLAYER_ENTER_MAP:
-			{
-				map_name, err := message.TakeShortString()
-				if err != nil {
-					log.Println("lendo o mapa:", err)
-					continue
-				}
-				target_zone, err := message.TakeShortString()
-				if err != nil {
-					log.Println("lendo a zona:", err)
-					continue
-				}
-				mapa, existe := s.maps[map_name]
-				if !existe {
-					fmt.Printf("jogador tentando ir para mapa inexistente %s ", map_name)
-					break
-				}
-				portal, existe := mapa.Zones[target_zone]
-				if !existe {
-					fmt.Printf("jogador tentando ir para portal inexistente %s ", target_zone)
-				}
-				old_map := client.CurrentMap
-				x, y := portal.PickPointForRect(14, 14)
-				log.Printf("jogador %d => %s.%s (%d,%d)", client.Spot, map_name, target_zone, x, y)
-
-				s.Mapcast(old_map, client, client.X, client.Y, MSG_SERVER_PLAYER_EXITED, id_bytes)
-
-				s.ChangeClientRoom(client, client_link, map_name)
-				s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name), i16(x), i16(y))
-			}
-		}
-	}
-}
-
-// a mensagem que o cliente recebe tem esse formato:
-//
-// 0 1    | 0 1            |  0 1  | 0 1
-// tipo   | id do jogador  |    x  |   y
-
-// a mensagem que o cliente envia tem esse formato:
-//
-// 0 1  | 0 1 | 0 1
-// tipo |   x |   y
-
 // 2- O servidor aceita conexões de websocket
 func (s *Server) GetWSHandler() func(c *gin.Context) {
 
+	s.player_by_id = make(map[string]*entities.Player)
 	s.free_clients = pecas.NewList[Client]()
 	s.free_spots = pecas.NewStack[int](s.MaxPlayers)
 
+	// na hora que eu fiz isso a ideia era ter um pool
+	// de clientes em branco para ficar reusando sem
+	// alocar/realocar o struct do Client em si
 	for i := 0; i < s.MaxPlayers; i++ {
-		link := pecas.NewLink(&Client{
-			Spot:       0,
-			Connection: nil,
-			Active:     false,
-		})
-		s.free_clients.AddLink(link)
+		s.free_clients.AddLink(
+			pecas.NewLink[Client](&Client{}),
+		)
 		s.free_spots.Push(i)
 	}
 
 	return func(c *gin.Context) {
-		log.Println("alguém está tentando entrar!")
+		player_id := "ghost"
+		token := c.Query("token")
+
+		fb_token, err := fb.ValidarToken(token)
+		if err != nil {
+			log.Printf("validação do token falhou: %v\n", err)
+		} else {
+			player_id = fb_token.UID
+		}
+
+		log.Printf("(%.6s) tentando entrar\n", player_id)
 		conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
 		if err != nil {
 			log.Println("não consegui fazer o upgrade da conexão: ", err)
@@ -309,10 +171,18 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 		log.Printf("agora tem %d clientes disponíveis", s.free_clients.Size())
 		if error != nil {
 			log.Println(error)
-			c.JSON(429, "server is full")
+			c.JSON(http.StatusInternalServerError, "server is full")
 			return
 		}
 		id, _ := s.free_spots.Pop()
+
+		/*
+					          _ valor _
+			                 |         v
+						[ link ]  [client]
+			                 ^          |
+							 |___ link _|
+		*/
 
 		// todo: a gente vai tirar o ID do jogador de dentro do usuário autenticado
 		//       e carregar as coisas dele
@@ -322,7 +192,7 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 			Spot:       id,
 			Player: entities.Player{
 				CurrentMap: "cidade",
-				Id:         123,
+				Id:         player_id,
 				X:          512,
 				Y:          262,
 				Bag: entities.Bag{
@@ -330,11 +200,16 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 					MaxWeight: 15000,
 				},
 			},
+			Link: link,
 		}
-		link.Value.Player.Load()
-		link.Value.Bag.Add(entities.Maca{})
-		link.Value.Bag.Add(entities.Sementes{Planta: "macieira"})
 
-		go s.StartSession(link)
+		// Se esse Load() falhar (porque a pessoa nunca jogou), então prevalecem as configurações iniciais do jogador
+		// i.e: surge no lobby, sem dinheiro, com uma mochila que comporta 10 coisas ou 15kg
+		if p := link.Value.Player; p.Id == "ghost" {
+			p.BecomeGhost()
+		} else {
+			p.Load()
+		}
+		go s.StartSession(link.Value)
 	}
 }

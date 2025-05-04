@@ -13,7 +13,7 @@ import * as util from "./game/client/util.js"
 
 import Stack from "./stack.js"
 import { Message } from "./game/client/client.js"
-import { chag_message, debug_text } from "./main.js"
+import { chat_message, debug_text } from "./main.js"
 
 
 const MAX_THINGS = 500
@@ -371,7 +371,7 @@ class GameState {
             case messages.PLAYER.CHAT:{
                 const from_player = msg.take_i16()
                 const text = msg.take_short_string()
-                chag_message(`player${from_player}:${text}`)
+                chat_message(`player${from_player}:${text}`)
             }break;
         }
     }

@@ -1,9 +1,10 @@
 {
- "id": 123,
+ "id": "mrDvsKA0OGTq9L2XY8kVl6qEgXt2",
+ "handle": "",
  "name": "",
  "current_map": "cidade",
- "x": 561,
- "y": 572,
+ "x": 520,
+ "y": 798,
  "energy": 0,
  "balance": 0,
  "bag": {
@@ -11,11 +12,7 @@
   "current_items": 0,
   "max_weight": 15000,
   "current_weight": 0,
-  "item_ids": [
-   "maçã(peso=200)",
-   "sementes(planta=macieira quantidade=5)",
-   "pa(material=ferro peso=5000)"
-  ]
+  "item_ids": null
  },
  "equipped_id": 0
 }

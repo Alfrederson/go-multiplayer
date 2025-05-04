@@ -39,6 +39,10 @@ type Message struct {
 	pointer int
 }
 
+func (m *Message) Length() int {
+	return len(m.bytes)
+}
+
 func (m *Message) SetInt16(val int16, pos int) {
 	binary.BigEndian.PutUint16(m.bytes[pos:], uint16(val))
 }

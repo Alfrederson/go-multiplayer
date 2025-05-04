@@ -1,3 +1,10 @@
+<script>
+    import { logar as login_firebase } from "$lib/client/game/fb/fb";
+
+    function logar(){
+        login_firebase()
+    }
+</script>
 <style>
     .gauge {
         background-color: rgba(0,0,0,0.5);
@@ -10,6 +17,11 @@
 <div class="d-flex flex-column flex-shrink-0 bg-none" style="width: 4.5rem; z-index:10">
     <div style="height:4.5rem"></div>
     <ul class="nav nav-pills nav-flush flex-column mb-auto text-center gap-2" style="font-weight:bold; color:white;">
+        <li>
+            <a href="#" class="nav-link gauge" on:click={logar}>
+                👤 <br/>
+            </a>
+        </li>
         <li>
             <a href="#" class="nav-link gauge" >
                 💲 <br/>256

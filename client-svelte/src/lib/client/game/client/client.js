@@ -109,19 +109,21 @@ export class Client {
 
     /**
      * conecta no servidor.
+     * 
      * @param {string} url
      * @param {{
-     *  listener: (Uint8Array) => void,
+     *  listener: (arg0:Uint8Array) => void,
      *  connected: (arg0:Client)=> void,
      *  disconnected : ()=> void,
      *  error : ()=>void
      * }} 
+     * @param {string} token
      */
-    connect(url, {listener,connected,disconnected,error}){
+    connect(url, {listener,connected,disconnected,error}, token){
         this.#myClientId = -1
         
         this.#listener = listener
-        const socket = new WebSocket(SERVER_URL)
+        const socket = new WebSocket(SERVER_URL+"?token="+token)
         this.#socket = socket
 
         socket.addEventListener("open",event =>{

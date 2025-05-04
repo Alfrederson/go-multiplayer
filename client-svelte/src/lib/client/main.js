@@ -1,3 +1,4 @@
+
 import {
   WGL_B2D
 } from "./blitz/webgl.js"
@@ -21,6 +22,8 @@ import {
 } from "./config.js"
 import { Client } from "./game/client/client.js"
 
+import { user_store } from "./game/fb/fb.js"
+
 /**
  * @param {string} type
  * @param {any} value
@@ -33,7 +36,7 @@ function dispatch_event(type,value){
 /**
  * @param {string} txt
  */
-export function chag_message(txt){
+export function chat_message(txt){
   dispatch_event("chat_message",txt)
 }
 
@@ -58,11 +61,17 @@ class MMORPG {
     this.gameState.screen.height = SCREEN_HEIGHT
 
     // conecta o cliente
-    this.client.connect(SERVER_URL,{
-      listener: x => this.gameState.listener(x),
-      connected: x => this.gameState.connected(x),
-      disconnected: () => this.gameState.disconnected(),
-      error: (/** @type {any} */ x) => this.gameState.error(x)
+
+    user_store.subscribe( u =>{
+      if(u.logado && u.token){
+        console.log("usuário está logado! ",u.token)
+        this.client.connect(SERVER_URL,{
+          listener: x => this.gameState.listener(x),
+          connected: x => this.gameState.connected(x),
+          disconnected: () => this.gameState.disconnected(),
+          error: (/** @type {any} */ x) => this.gameState.error(x)
+        },u.token)    
+      }
     })
 
     // const input_message = document.getElementById("input-chat")

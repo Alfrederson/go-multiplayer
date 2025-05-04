@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,23 @@ import (
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		// raw := c.Request.URL.RawQuery
+		c.Next()
+		latency := time.Since(start)
+		status := c.Writer.Status()
+		log.Printf("[GIN] %d | %13v | %15s | %-7s %s",
+			status,
+			latency,
+			c.ClientIP(),
+			c.Request.Method,
+			path,
+		)
+	})
+	r.Use(gin.Recovery())
 
 	server := Server{
 		MaxPlayers: 100,

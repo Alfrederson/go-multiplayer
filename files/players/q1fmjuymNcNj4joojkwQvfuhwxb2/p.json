@@ -1,0 +1,18 @@
+{
+ "id": "q1fmjuymNcNj4joojkwQvfuhwxb2",
+ "name": "",
+ "handler" : "fulano",
+ "current_map": "cidade",
+ "x": 587,
+ "y": 291,
+ "energy": 0,
+ "balance": 0,
+ "bag": {
+  "max_items": 10,
+  "current_items": 0,
+  "max_weight": 15000,
+  "current_weight": 0,
+  "item_ids": null
+ },
+ "equipped_id": 0
+}
