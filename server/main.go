@@ -10,6 +10,14 @@ import (
 
 // 1- Eu tenho um servidor
 func main() {
+
+	// governo := entities.Player{
+	// 	Id:         "governo",
+	// 	Balance:    1000000000,
+	// 	CurrentMap: "nowhere",
+	// }
+	// governo.Save()
+
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()

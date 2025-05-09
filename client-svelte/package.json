@@ -23,6 +23,7 @@
 	},
 	"dependencies": {
 		"client-svelte": "file:",
-		"firebase": "^11.6.1"
+		"firebase": "^11.6.1",
+		"gl-matrix": "^3.4.3"
 	}
 }

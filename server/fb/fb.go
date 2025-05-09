@@ -6,6 +6,7 @@ import (
 	"log"
 	"path/filepath"
 
+	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
 	"google.golang.org/api/option"
@@ -13,6 +14,7 @@ import (
 
 var firebase_app *firebase.App
 var auth_client *auth.Client
+var fs_client *firestore.Client
 
 type FirebaseInfo struct {
 	Identities     map[string][]string `json:"identities"`
@@ -43,6 +45,11 @@ func init() {
 	auth_client, err = firebase_app.Auth(ctx)
 	if err != nil {
 		log.Fatalf("não consegui inicializar o cliente firebase auth: %v", err)
+	}
+
+	fs_client, err = firebase_app.Firestore(ctx)
+	if err != nil {
+		log.Fatalf("não consegui inicializar o cliente firestore: %v", err)
 	}
 
 }

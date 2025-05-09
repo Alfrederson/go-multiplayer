@@ -1,13 +1,12 @@
 package entities
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/Alfrederson/backend_game/fb"
 )
 
 type ItemId string
@@ -32,7 +31,7 @@ type Bag struct {
 	MaxWeight     int      `json:"max_weight"`
 	CurrentWeight int      `json:"current_weight"`
 	ItemIds       []ItemId `json:"item_ids"`
-	Items         []Item   `json:"-"`
+	Items         []Item   `json:"-" firestore:"-"`
 }
 
 func (b *Bag) Add(item Item) error {
@@ -54,7 +53,7 @@ func (b *Bag) Add(item Item) error {
 
 type Player struct {
 	// ghost: false => jogador normal. true => espectador
-	Ghost bool   `json:"-"`
+	Ghost bool   `json:"-" firestore:"-"`
 	Id    string `json:"id"`
 	// uma coisa tipo @usuario123
 	Handle     string `json:"handle"`
@@ -68,7 +67,7 @@ type Player struct {
 	Balance int `json:"balance"`
 
 	// quais itens o jogador tem
-	Bag `json:"bag"`
+	Bag Bag `json:"bag"`
 
 	// qual item está equipado agora
 	EquippedId int `json:"equipped_id"`
@@ -86,16 +85,23 @@ func (p *Player) BecomeGhost() {
 
 // Isso vai ficar no firestore no futuro.
 func (p *Player) Load() {
-	filename := filepath.Join("../files/players/", p.Id, "p.json")
-	b, err := os.ReadFile(filename)
+	path := fmt.Sprintf("players/%s", p.Id)
+	err := fb.ReadDocument(path, p)
 	if err != nil {
-		log.Printf("não consegui carregar como o jogador (%.6s) estava: %v", p.Id, err)
+		log.Printf("não consegui carregar o jogador %s : %v\n", p.Id, err)
 		return
 	}
-	if err := json.Unmarshal(b, p); err != nil {
-		log.Printf("não consegui carregar como o jogador (%.6s) estava: %v", p.Id, err)
-		return
-	}
+
+	// filename := filepath.Join("../files/players/", p.Id, "p.json")
+	// b, err := os.ReadFile(filename)
+	// if err != nil {
+	// 	log.Printf("não consegui carregar como o jogador (%.6s) estava: %v", p.Id, err)
+	// 	return
+	// }
+	// if err := json.Unmarshal(b, p); err != nil {
+	// 	log.Printf("não consegui carregar como o jogador (%.6s) estava: %v", p.Id, err)
+	// 	return
+	// }
 
 	// cria os itens concretos
 	for _, id := range p.Bag.ItemIds {
@@ -118,24 +124,30 @@ func (p *Player) Load() {
 	// }
 }
 
-// TODO: Isso vai ficar no Firestore.
 func (p *Player) Save() {
-	os.MkdirAll(filepath.Join("../files/players/", p.Id), os.ModePerm)
-	filename := filepath.Join("../files/players/", p.Id, "p.json")
-
-	bytes, err := json.MarshalIndent(p, "", " ")
+	path := fmt.Sprintf("players/%s", p.Id)
+	err := fb.SaveDocument(path, p)
 	if err != nil {
-		log.Printf("não consegui marshalizar jogador %s : %v", p.Id, err)
+		log.Printf("não consegui salvar o jogador %s : %v\n", p.Id, err)
 		return
 	}
-	// buf := bytes.Buffer{}
-	// enc := gob.NewEncoder(&buf)
-	// if err := enc.Encode(p); err != nil {
-	// 	log.Printf("jogador %d perdeu dados: %v", p.Id, err)
+
+	// os.MkdirAll(filepath.Join("../files/players/", p.Id), os.ModePerm)
+	// filename := filepath.Join("../files/players/", p.Id, "p.json")
+
+	// bytes, err := json.MarshalIndent(p, "", " ")
+	// if err != nil {
+	// 	log.Printf("não consegui marshalizar jogador %s : %v", p.Id, err)
 	// 	return
 	// }
-	if err := os.WriteFile(filename, bytes, os.ModePerm); err != nil {
-		log.Printf("não consegui gravar o progresso do jogador %s: %v", p.Id, err)
-		return
-	}
+	// // buf := bytes.Buffer{}
+	// // enc := gob.NewEncoder(&buf)
+	// // if err := enc.Encode(p); err != nil {
+	// // 	log.Printf("jogador %d perdeu dados: %v", p.Id, err)
+	// // 	return
+	// // }
+	// if err := os.WriteFile(filename, bytes, os.ModePerm); err != nil {
+	// 	log.Printf("não consegui gravar o progresso do jogador %s: %v", p.Id, err)
+	// 	return
+	// }
 }

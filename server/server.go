@@ -198,6 +198,8 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 				Bag: entities.Bag{
 					MaxItems:  10,
 					MaxWeight: 15000,
+					Items:     make([]entities.Item, 0),
+					ItemIds:   make([]entities.ItemId, 0),
 				},
 			},
 			Link: link,
