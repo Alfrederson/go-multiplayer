@@ -64,7 +64,6 @@ class MMORPG {
 
     user_store.subscribe( u =>{
       if(u.logado && u.token){
-        console.log("usuário está logado! ",u.token)
         this.client.connect(SERVER_URL,{
           listener: x => this.gameState.listener(x),
           connected: x => this.gameState.connected(x),

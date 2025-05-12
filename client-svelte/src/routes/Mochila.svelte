@@ -1,5 +1,18 @@
 <script>
+    import { interface_store } from "$lib/interface.store";
+    import { player_store } from "$lib/client/game/player/player.store";
+    
     let open = $state(false)
+    interface_store.subscribe( i =>{
+        open = i.mochila_aberta
+    })
+    function fechar_mochila(){
+        interface_store.update( i =>{
+            i.mochila_aberta = false
+            return i
+        })
+    }
+
 </script>
 <style>
     .item {
@@ -17,15 +30,15 @@
     }
 </style>
 {#if open}
-<div class="layer" style="z-index:11;user-select: none;  margin:auto;">
-    <div class="modal" style="background-color: rgba(0,0,0,0.5); margin-left:4.5rem;margin-right:4.5rem; border:none; display:block;">
+<div class="layer" style="z-index:11;user-select: none; margin:auto;">
+    <div class="modal" style=" background-color: rgba(0,0,0,0.2); display:block;">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">
                         mochila
                     </h5>
-                    <button class="btn btn-close"></button>
+                    <button class="btn btn-close" onclick={fechar_mochila}></button>
                 </div>
                 <div class="pt-4 " style="border:none">
                     <ul class="gap-2">

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Alfrederson/backend_game/fb"
+	"github.com/Alfrederson/backend_game/msg"
 )
 
 type ItemId string
@@ -26,61 +27,125 @@ func (i ItemId) GetItem() (Item, error) {
 }
 
 type Bag struct {
-	MaxItems      int      `json:"max_items"`
-	CurrentItems  int      `json:"current_items"`
-	MaxWeight     int      `json:"max_weight"`
-	CurrentWeight int      `json:"current_weight"`
-	ItemIds       []ItemId `json:"item_ids"`
-	Items         []Item   `json:"-" firestore:"-"`
+	MaxWeight     int      `json:"max_weight" firestore:"max_weight"`
+	CurrentWeight int      `json:"current_weight" firestore:"current_weight"`
+	MaxItemCount  int      `json:"max_item_count" firestore:"max_item_count"`
+	ItemCount     int      `json:"item_count" firestore:"item_count"`
+	ItemIds       []ItemId `json:"item_ids" firestore:"item_ids"`
+	// isso só é usado internamente para implementar as funcionalidades.
+	Items []Item `json:"-" firestore:"-"`
+}
+
+func (b *Bag) WriteToMessage(out *msg.Message) {
+	out.PutInt16(b.MaxWeight)
+	out.PutInt16(b.CurrentWeight)
+	out.PutInt16(b.MaxItemCount)
+	out.PutInt16(b.ItemCount)
+	for _, v := range b.ItemIds {
+		out.PutShortString(string(v))
+	}
 }
 
 func (b *Bag) Add(item Item) error {
 	if b.CurrentWeight+item.Weight() > b.MaxWeight {
 		return errors.New("a mochila já está pesada demais")
 	}
-	if b.CurrentItems+1 > b.MaxItems {
+	if b.ItemCount+1 > b.MaxItemCount {
 		return errors.New("a mochila já tem coisas demais")
 	}
 	if b.ItemIds == nil {
 		b.ItemIds = make([]ItemId, 0)
 		b.Items = make([]Item, 0)
 	}
+	b.ItemCount++
 	log.Printf("jogador pegou uma %s", item.Name())
 	b.ItemIds = append(b.ItemIds, ItemId(item.String()))
 	b.Items = append(b.Items, item)
 	return nil
 }
 
-type Player struct {
+type PlayerStatus struct {
 	// ghost: false => jogador normal. true => espectador
-	Ghost bool   `json:"-" firestore:"-"`
-	Id    string `json:"id"`
+	Ghost      bool   `json:"-" firestore:"ghost"`
+	CurrentMap string `json:"current_map" firestore:"current_map"`
+	X          int    `json:"x" firestore:"x"`
+	Y          int    `json:"y" firestore:"y"`
+	Energy     int    `json:"energy" firestore:"energy"`
+	Hunger     int    `json:"hunger" firestore:"hunger"`
+	Thirst     int    `json:"thirst" firestore:"thirst"`
+	Health     int    `json:"health" firestore:"health"`
+	EquippedId int    `json:"equipped_id" firestore:"equipped_id"`
+	Balance    int    `json:"balance" firestore:"balance"`
+}
+
+func (s *PlayerStatus) TickVitals() {
+	s.Hunger = min(100, s.Hunger+3)
+	s.Thirst = min(100, s.Thirst+1)
+	if s.Hunger == 100 {
+		s.Health = max(0, s.Health-1)
+	}
+	if s.Thirst == 100 {
+		s.Health = max(0, s.Health-3)
+	}
+}
+func (s *PlayerStatus) IsGhost() bool {
+	return s.Ghost
+}
+func (s *PlayerStatus) BecomeGhost() {
+	s.Ghost = true
+}
+
+func (s *PlayerStatus) WriteToMessage(out *msg.Message) {
+	out.PutBool(s.Ghost)
+	out.PutShortString(s.CurrentMap)
+	out.PutInt32(s.X)
+	out.PutInt32(s.Y)
+	out.PutInt8(s.Energy)
+	out.PutInt8(s.Hunger)
+	out.PutInt8(s.Thirst)
+	out.PutInt8(s.Health)
+	out.PutInt16(s.EquippedId)
+	out.PutInt32(s.Balance)
+}
+
+func (s *PlayerStatus) WriteVitalToMessage(out *msg.Message) {
+	out.PutInt8(s.Energy)
+	out.PutInt8(s.Hunger)
+	out.PutInt8(s.Thirst)
+	out.PutInt8(s.Health)
+}
+
+type PlayerProfile struct {
+	Name   string `json:"name" firestore:"name"`
+	Handle string `json:"handle" firestore:"handle"`
+	// aqui a gente vai botar qual sprite ele tem e etc
+	Sprite string `json:"sprite" firestore:"sprite"`
+}
+
+func (p *PlayerProfile) WriteToMessage(out *msg.Message) {
+	out.PutShortString(p.Name)
+	out.PutShortString(p.Handle)
+	out.PutShortString(p.Sprite)
+}
+
+type Player struct {
+	Id string `json:"id" firestore:"id"`
 	// uma coisa tipo @usuario123
-	Handle     string `json:"handle"`
-	Name       string `json:"name"`
-	CurrentMap string `json:"current_map"`
-	X          int    `json:"x"`
-	Y          int    `json:"y"`
-	// disposição do jogador (se zerar, a pessoa só vai conseguir descansar)
-	Energy int `json:"energy"`
-	// quanto money a pessoa tem
-	Balance int `json:"balance"`
+	Profile PlayerProfile `json:"profile" firestore:"profile"`
+	Status  PlayerStatus  `json:"status" firestore:"status"`
 
 	// quais itens o jogador tem
-	Bag Bag `json:"bag"`
+	Bag Bag `json:"bag" firestore:"bag"`
+}
 
-	// qual item está equipado agora
-	EquippedId int `json:"equipped_id"`
+func (p *Player) WriteToMessage(out *msg.Message) {
+	p.Profile.WriteToMessage(out)
+	p.Status.WriteToMessage(out)
+	p.Bag.WriteToMessage(out)
 }
 
 func (p *Player) Message(msg string) {
 	log.Printf("to %s : %s", p.Id, msg)
-}
-func (p *Player) IsGhost() bool {
-	return p.Ghost
-}
-func (p *Player) BecomeGhost() {
-	p.Ghost = true
 }
 
 // Isso vai ficar no firestore no futuro.

@@ -3,17 +3,19 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/Alfrederson/backend_game/msg"
 	"github.com/gobwas/ws/wsutil"
 )
 
-func msg_player_status(s *Server, c *Client, m Message) {
+func msg_player_status(s *Server, c *Client, m *msg.Message) {
 	// tamanho fixo é mais fácil de fazer isso.
 	if m.Length() < 7 {
 		return
 	}
-	c.Player.X = m.TakeInt16()
-	c.Player.Y = m.TakeInt16()
+	c.Player.Status.X = m.TakeInt16()
+	c.Player.Status.Y = m.TakeInt16()
 	//TODO: cansar o jogador com base na distância que foi percorrida.
 
 	// a gente vai ter um sistema de células
@@ -24,20 +26,20 @@ func msg_player_status(s *Server, c *Client, m Message) {
 	// naquela célula
 	// a gente também vai usar os portais definidos no mapa
 	// pra decidir para qual outro mapa a pessoa teletransporta
-	s.Mapcast(c.CurrentMap, c, c.X, c.Y, m.MessageByte(), m.bytes[1:])
+	s.Mapcast(c.Status.CurrentMap, c, c.Status.X, c.Status.Y, m.MessageByte(), m.PayloadBytes())
 }
 
-func msg_player_chat(s *Server, c *Client, m Message) {
+func msg_player_chat(s *Server, c *Client, m *msg.Message) {
 	chat, err := m.TakeShortString()
 	if err != nil {
 		log.Println("msg_player_chat: ", err)
 		return
 	}
 	fmt.Printf("%d > %s\n", c.Spot, chat)
-	s.Mapcast(c.CurrentMap, nil, c.X, c.Y, m.MessageByte(), m.bytes[1:])
+	s.Mapcast(c.Status.CurrentMap, nil, c.Status.X, c.Status.Y, m.MessageByte(), m.PayloadBytes())
 }
 
-func msg_player_enter_map(s *Server, c *Client, m Message) {
+func msg_player_enter_map(s *Server, c *Client, m *msg.Message) {
 	map_name, err := m.TakeShortString()
 	if err != nil {
 		log.Println("lendo o mapa:", err)
@@ -57,31 +59,65 @@ func msg_player_enter_map(s *Server, c *Client, m Message) {
 	if !existe {
 		fmt.Printf("jogador tentando ir para portal inexistente %s \n", target_zone)
 	}
-	old_map := c.CurrentMap
+	old_map := c.Status.CurrentMap
 	x, y := portal.PickPointForRect(14, 14)
 	log.Printf("(%.6s) => %s.%s (%d,%d)", c.Player.Id, map_name, target_zone, x, y)
 
-	s.Mapcast(old_map, c, c.X, c.Y, MSG_SERVER_PLAYER_EXITED, i16(c.Spot))
+	// s.Mapcast(old_map, c, c.Status.X, c.Status.Y, msg.MSG_SERVER_PLAYER_EXITED, msg.I16(c.Spot))
+
+	s.MapcastBytes(
+		old_map,
+		c,
+		c.Status.X,
+		c.Status.Y,
+		msg.ConstructMessage(msg.SERVER_PLAYER_EXITED, msg.I16(c.Spot)),
+	)
 
 	s.ChangeClientRoom(c, map_name)
-	s.Send(c, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(map_name), i16(x), i16(y))
+	s.SendBytes(c,
+		msg.ConstructMessage(msg.SERVER_PLAYER_SET_MAP, msg.StrToByteArray(map_name), msg.I16(x), msg.I16(y)),
+	)
 }
 
 func (s *Server) StartSession(client *Client) {
-	id_bytes := i16(client.Spot)
+	id_bytes := msg.I16(client.Spot)
 
 	log.Printf("cliente pegou o spot %d", client.Spot)
 
+	// começa o ticker
+	ticker := time.NewTicker(time.Second)
+	jogador_saiu := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-jogador_saiu:
+				return
+			case <-ticker.C:
+				client.Player.Status.TickVitals()
+
+				msg_status := msg.Message{}
+				msg_status.PutUint8(msg.SERVER_PLAYER_VITAL)
+				client.Player.Status.WriteVitalToMessage(&msg_status)
+				s.SendBytes(client, msg_status.Bytes())
+				break
+			}
+		}
+	}()
+
 	defer func() {
+		// desliga o ticker do jogador
+		ticker.Stop()
+		jogador_saiu <- true
+
 		// notifica os outros jogadores de que este aqui saiu
-		s.Mapcast(client.CurrentMap, client, client.X, client.Y, MSG_SERVER_PLAYER_EXITED, id_bytes)
+		s.Mapcast(client.Status.CurrentMap, client, client.Status.X, client.Status.Y, msg.SERVER_PLAYER_EXITED, id_bytes)
 
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
 
 		// libera o id do player do índice
-		if !client.Player.IsGhost() {
-			delete(s.player_by_id, client.Player.Id)
+		if !client.Status.IsGhost() {
+			delete(s.player_by_id, client.Id)
 		}
 
 		// libera o ID
@@ -92,7 +128,7 @@ func (s *Server) StartSession(client *Client) {
 		(*client).Connection.Close()
 
 		// tira o cliente do mapa em que ele está
-		s.maps[(*client).CurrentMap].ActiveClients.RemoveLink(client.Link)
+		s.maps[(*client).Status.CurrentMap].ActiveClients.RemoveLink(client.Link)
 
 		// retorna para o pool
 		s.free_clients.AddLink(client.Link)
@@ -105,45 +141,56 @@ func (s *Server) StartSession(client *Client) {
 		*client = Client{}
 	}()
 
-	log.Println("botando o cliente na sala ", client.CurrentMap)
+	log.Println("botando o cliente na sala ", client.Status.CurrentMap)
 
-	if !client.Player.IsGhost() {
+	if !client.Player.Status.IsGhost() {
 		s.player_by_id[client.Player.Id] = &client.Player
 	}
 
-	s.maps[client.CurrentMap].ActiveClients.AddLink(client.Link)
+	s.maps[client.Status.CurrentMap].ActiveClients.AddLink(client.Link)
 
 	// diz par ao jogador qual é o ID dele
-	s.Send(client, MSG_SERVER_SETID, id_bytes)
+	s.Send(client, msg.SERVER_SETID, id_bytes)
 	// diz para o jogador quem são os outros jogadores que estão lá
 	// (esse é difícil)
 
+	// Envia o estado completo do jogador
+	msg_status := msg.Message{}
+	msg_status.PutUint8(msg.SERVER_PLAYER_FULL_STATUS)
+	client.Player.WriteToMessage(&msg_status)
+	s.SendBytes(client, msg_status.Bytes())
+
 	// manda o jogador entrar em um mapa
-	s.Send(client, MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(client.CurrentMap), i16(client.X), i16(client.Y))
+	// msg_setmap := msg.Message{}
+	// msg_setmap.PutUint8(msg.MSG_SERVER_PLAYER_SET_MAP)
+	// msg_setmap.PutShortString(client.Status.CurrentMap)
+	// msg_setmap.PutInt32(cli)
+	// s.Send(client, msg.MSG_SERVER_PLAYER_SET_MAP, short_str_to_byte_array(client.CurrentMap), i16(client.X), i16(client.Y))
 
 	// Notifica os outros do mapa que ele entrou...
 	log.Println("notificando que o jogador entrou")
-	s.Mapcast(client.CurrentMap, client, client.X, client.Y, MSG_SERVER_PLAYER_JOINED, id_bytes)
+	s.Mapcast(client.Status.CurrentMap, client, client.Status.X, client.Status.Y, msg.SERVER_PLAYER_JOINED, id_bytes)
 
 	// estatísticas
 	for {
 		// o segundo valor é op
-		msg, op, err := wsutil.ReadClientData(client.Connection)
+		received_msg, op, err := wsutil.ReadClientData(client.Connection)
 		if err != nil {
 			log.Println("erro de leitura ", op, err)
 			break
 		}
 
 		// descarta a mensagem se for menor do que a mínima
-		if len(msg) < 3 {
+		if len(received_msg) < 3 {
 			continue
 		}
 
-		// identifica a mensagem
-		msg[1] = id_bytes[0]
-		msg[2] = id_bytes[1]
+		// muda o ID da mensagem para chegar nos outros jogadores
+		// propriamente identificada
+		received_msg[1] = id_bytes[0]
+		received_msg[2] = id_bytes[1]
 
-		message := Message{bytes: msg}
+		message := msg.MessageFromBytes(received_msg)
 
 		// jogador tentando enviar uma mensagem de servidor
 		if message.IsServerMessage() {
@@ -155,13 +202,13 @@ func (s *Server) StartSession(client *Client) {
 		message.Skip(2) // bytes do ID
 		switch msg_byte {
 
-		case MSG_PLAYER_STATUS:
+		case msg.PLAYER_STATUS:
 			msg_player_status(s, client, message)
-		case MSG_PLAYER_CHAT:
+		case msg.PLAYER_CHAT:
 			msg_player_chat(s, client, message)
 		// na verdade isso vai ser uma mensagem "PLAYER_USE_PORTAL"
 		// e eu vou checar se o jogador está mesmo perto do portal
-		case MSG_PLAYER_ENTER_MAP:
+		case msg.PLAYER_ENTER_MAP:
 			msg_player_enter_map(s, client, message)
 		}
 	}

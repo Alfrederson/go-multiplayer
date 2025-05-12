@@ -1,6 +1,9 @@
 package fb
 
-import "context"
+import (
+	"context"
+	"log"
+)
 
 func SaveDocument(path string, data interface{}) error {
 	_, err := fs_client.Doc(path).Set(context.Background(), data)
@@ -13,6 +16,7 @@ func ReadDocument[T any](path string, output *T) error {
 		return err
 	}
 	err = doc.DataTo(output)
+	log.Println(*output)
 	if err != nil {
 		return err
 	}

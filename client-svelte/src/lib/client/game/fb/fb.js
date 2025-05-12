@@ -4,6 +4,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 
 export const user_store = writable({
+  determinado : false,
   logado : false,
   displayName : "",
   token : ""  
@@ -18,50 +19,43 @@ const firebaseConfig = {
   appId: "1:908855580412:web:f4bc0be06993b79b12a979"
 };
 
-
-
-let busy = false
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app)
 const provider = new GoogleAuthProvider()
 
-
-console.log("já que isso foi importado, isso vai rodar automaticamente.")
-onAuthStateChanged(auth, async user =>{
-  if(!user){
-    user_store.set({
-      logado : false,
-      displayName : "",
-      token : ""
+export function begin(){
+  onAuthStateChanged(auth, async user =>{
+    console.log("auth state changed")
+  
+    if(!user){
+      console.log("não tem user")
+      user_store.set({
+        determinado : true,
+        logado : false,
+        displayName : "",
+        token : ""
+      })
+      return
+    }else{
+      console.log("mentira, tem sim")
+    }
+    user_store.update(u => {
+      u.determinado = true
+      u.logado = true
+      return u
     })
-    return
-  }
-  user_store.update(u => {
-    u.logado = true
-    return u
+    const token = await user?.getIdToken()
+    if(!token){
+      return
+    }
+    user_store.update(u =>{ 
+      u.displayName = user.displayName ?? "sem nome"
+      u.token = token
+      return u
+    })
   })
-  const token = await user?.getIdToken()
-  if(!token){
-    return
-  }
-  user_store.update(u =>{ 
-    u.displayName = user.displayName ?? "sem nome"
-    u.token = token
-
-    return u
-  })
-},
-error =>{
-  user_store.set({
-    logado : false,
-    displayName : "",
-    token : ""
-  })  
-  console.log(error)
-})
-
+}
 
 /**
  * faz login com o firebase authentication.
@@ -69,12 +63,9 @@ error =>{
  * o usuário está autenticado.
  */
 export async function logar(){
-
   await signInWithPopup(auth,provider)
 }
 
-
-
-export function deslogar(){
-
+export async function deslogar(){
+  await signOut(auth)
 }

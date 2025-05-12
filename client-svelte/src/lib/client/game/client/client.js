@@ -34,11 +34,24 @@ export class Message {
         this.pointer += 1
         return result
     }
+    take_bool(){
+        const result = this.#bytes[this.pointer] == 1 ? true : false
+        this.pointer += 1
+        return result
+    }
     take_i16(){
         const result_h = this.#bytes[this.pointer]
         const result_l = this.#bytes[this.pointer+1]
         this.pointer += 2
         return (result_h << 8)|result_l
+    }
+    take_i32(){
+        const result_0 = this.#bytes[this.pointer]
+        const result_1 = this.#bytes[this.pointer+1]
+        const result_2 = this.#bytes[this.pointer+2]
+        const result_3 = this.#bytes[this.pointer+3]
+        this.pointer += 4
+        return (result_0 << 24)|(result_1 << 16)|(result_2 << 8)|result_3
     }
     take_short_string(){
         const length = this.#bytes[this.pointer]

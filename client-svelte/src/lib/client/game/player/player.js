@@ -5,12 +5,21 @@ import {
 import {Animation, ANIMATION_PING_PONG} from "../animation.js"
 import { GameState } from "../../game_state.js"
 import { constrain } from "../util.js";
+import { player_store } from "./player.store.js";
 
 
-let sprite
+/**
+ * @type {import("../../blitz/blitz.js").IImage}
+ */
+let anonimo
+
+/** @type {Map<string,import("../../blitz/blitz.js").IImage>} */
+const sprite_map = new Map()
 
 Preload( async b =>{
-    sprite = await b.LoadAnimImage("char.png",24,32)
+    anonimo = await b.LoadAnimImage("char.png",24,32)
+
+    // carregar vários tipos de sprite...
 })
 
 const FRAME_WIDTH = 24
@@ -25,6 +34,8 @@ export const DIR_RIGHT = 1
 export const DIR_DOWN = 2
 export const DIR_LEFT = 3
 
+
+
 class Player {    
     x = 128
     y = 64
@@ -38,7 +49,6 @@ class Player {
     walking = false
     direction = 0
 
-
     anim_walk = new Animation({frameDelay: 10, frameCount: 3, baseFrame: 0, type: ANIMATION_PING_PONG})
 
     // coisas do multiplayer
@@ -47,6 +57,11 @@ class Player {
     oldY = 0
     newX = 0
     newY = 0
+
+    name = ""
+    handle = ""
+    /** @type {import("../../blitz/blitz.js").IImage|undefined} */
+    sprite
 
     /**
      * @param {number[]} rect
@@ -103,8 +118,8 @@ class Player {
     }
 
     // jogadores online
+    // agente pode usar o mesmo esquema para controlar os animais
     /**
-     * 
      * @param {GameState} s 
      * @param {number} deltaTime 
      */
@@ -130,6 +145,10 @@ class Player {
         this.anim_walk.update()
     }
 
+    /**
+     * @param {number} x
+     * @param {number} y
+     */
     remoteGoTo(x,y){
         // personagem acabou de ser spawnado
         // isso evita que ele apareça voando no mapa quando sai do mapa eu acho
@@ -171,11 +190,76 @@ class Player {
      */
     render(b,s){
         const frame = this.walking ? this.anim_walk.frame + this.direction*3 : this.direction*3+1
-        b.DrawImageFrame(sprite,
+        b.DrawImageFrame(this.sprite ?? anonimo,
             this.x - MARGIN_X,
             this.y - MARGIN_Y,
             frame
         )
+    }
+
+    /** 
+     * Preenche a mochila de acordo com a mensagem que é recebida do servidor.
+     * @param {{
+     * max_weight : number,
+     * current_weight : number,
+     * max_item_count : number,
+     * items : string[]}} bag
+     */
+    setBag(bag){
+        // não sei se é bom fazer isso ou se é melhor publicar um evento que faz sei lá
+        // o que...
+        player_store.update( s =>{
+            s.bag = bag
+            return s
+        })
+    }
+
+
+    /**
+     * atualiza os estados vitais
+     * @param {{ hunger: number; thirst: number; energy: number; health:number }} status
+     */
+    setVital(status){
+        player_store.update( s => {
+            s.status.energy = status.energy
+            s.status.hunger = status.hunger
+            s.status.thirst = status.thirst
+            s.status.health = status.health
+            return s
+        })
+    }
+    /**
+     * @param {{
+     *      balance: number; 
+     *      ghost?: boolean;
+     *      energy: number;
+     *      equipped_id: number;
+     *      hunger: number;
+     *      thirst: number;
+     *      health: number}} status
+     */
+    setStatus(status){
+        player_store.update( s =>{
+            s.status.equipped_id = status.equipped_id
+            s.status.balance = status.balance
+            s.status.energy = status.energy
+            s.status.hunger = status.hunger
+            s.status.thirst = status.thirst
+            s.status.health = status.health
+            return s
+        })
+    }
+
+    /**
+     * 
+     * @param {{
+     * name : string,
+     * handle : string,
+     * sprite : string}} profile 
+     */
+    setProfile(profile){
+        this.name = profile.name
+        this.handle = profile.handle
     }
 
 }

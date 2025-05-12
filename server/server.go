@@ -9,6 +9,7 @@ import (
 
 	"github.com/Alfrederson/backend_game/entities"
 	"github.com/Alfrederson/backend_game/fb"
+	"github.com/Alfrederson/backend_game/msg"
 	"github.com/Alfrederson/backend_game/pecas"
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
@@ -69,17 +70,22 @@ func (s *Server) Status() ServerStatus {
 func (s *Server) Send(to *Client, message byte, data ...[]byte) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	wsutil.WriteServerBinary((*to).Connection, msg.ConstructMessage(message, data...))
+}
 
-	wsutil.WriteServerBinary((*to).Connection, construct_message(message, data...))
+func (s *Server) SendBytes(to *Client, data []byte) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	wsutil.WriteServerBinary((*to).Connection, data)
 }
 
 func (s *Server) ChangeClientRoom(client *Client, to_room string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.maps[(*client).CurrentMap].ActiveClients.RemoveLink((*client).Link)
-	(*client).CurrentMap = to_room
-	s.maps[(*client).CurrentMap].ActiveClients.AddLink((*client).Link)
+	s.maps[(*client).Status.CurrentMap].ActiveClients.RemoveLink((*client).Link)
+	(*client).Status.CurrentMap = to_room
+	s.maps[(*client).Status.CurrentMap].ActiveClients.AddLink((*client).Link)
 }
 
 func int_abs(val int) int {
@@ -90,23 +96,43 @@ func int_abs(val int) int {
 	}
 }
 
-// envia uma mensagem para todos os clientes em um mapa
-func (s *Server) Mapcast(mapname string, from *Client, x int, y int, message byte, data ...[]byte) {
+func (s *Server) MapcastBytes(mapname string, from *Client, x int, y int, data []byte) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	msg := construct_message(message, data...)
 	s.maps[mapname].ActiveClients.ForEach(func(c *Client) {
-		if c.CurrentMap != mapname {
-			fmt.Printf(" EEEPA! mensagem para %s chegando em %s!\n", mapname, c.CurrentMap)
+		// isso não é para acontecer nunca...
+		if c.Status.CurrentMap != mapname {
+			fmt.Printf("mensagem para o mapa %s chegando em cliente que está em %s", mapname, c.Status.CurrentMap)
 			return
 		}
 		if ((from != nil && (c.Connection != from.Connection)) || from == nil) && c.Active {
 			// não repassa para quem estiver longe...
-			if int_abs(x-c.X) > 320 ||
-				int_abs(y-c.Y) > 320 {
+			if int_abs(x-c.Status.X) > 320 ||
+				int_abs(y-c.Status.Y) > 320 {
 				return
 			}
-			wsutil.WriteServerBinary((*c).Connection, msg)
+			wsutil.WriteServerBinary((*c).Connection, data)
+		}
+	})
+}
+
+// envia uma mensagem para todos os clientes em um mapa
+func (s *Server) Mapcast(mapname string, from *Client, x int, y int, message byte, data ...[]byte) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	byte_message := msg.ConstructMessage(message, data...)
+	s.maps[mapname].ActiveClients.ForEach(func(c *Client) {
+		if c.Status.CurrentMap != mapname {
+			fmt.Printf(" EEEPA! mensagem para %s chegando em %s!\n", mapname, c.Status.CurrentMap)
+			return
+		}
+		if ((from != nil && (c.Connection != from.Connection)) || from == nil) && c.Active {
+			// não repassa para quem estiver longe...
+			if int_abs(x-c.Status.X) > 320 ||
+				int_abs(y-c.Status.Y) > 320 {
+				return
+			}
+			wsutil.WriteServerBinary((*c).Connection, byte_message)
 		}
 	})
 }
@@ -115,15 +141,14 @@ func (s *Server) Mapcast(mapname string, from *Client, x int, y int, message byt
 func (s *Server) Broadcast(from *Client, message byte, data ...[]byte) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	msg := construct_message(message, data...)
+	new_msg := msg.ConstructMessage(message, data...)
 	for _, this_map := range s.maps {
 		if this_map.ActiveClients.Size() == 0 {
 			continue
 		}
 		this_map.ActiveClients.ForEach(func(c *Client) {
 			if ((from != nil && ((*c).Connection != (*from).Connection)) || from == nil) && (*c).Active {
-				wsutil.WriteServerBinary((*c).Connection, msg)
+				wsutil.WriteServerBinary((*c).Connection, new_msg)
 			}
 		})
 	}
@@ -191,15 +216,17 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 			Connection: conn,
 			Spot:       id,
 			Player: entities.Player{
-				CurrentMap: "cidade",
-				Id:         player_id,
-				X:          512,
-				Y:          262,
+				Id: player_id,
+				Status: entities.PlayerStatus{
+					CurrentMap: "cidade",
+					X:          512,
+					Y:          262,
+				},
 				Bag: entities.Bag{
-					MaxItems:  10,
-					MaxWeight: 15000,
-					Items:     make([]entities.Item, 0),
-					ItemIds:   make([]entities.ItemId, 0),
+					MaxItemCount: 10,
+					MaxWeight:    15000,
+					Items:        make([]entities.Item, 0),
+					ItemIds:      make([]entities.ItemId, 0),
 				},
 			},
 			Link: link,
@@ -207,8 +234,8 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 
 		// Se esse Load() falhar (porque a pessoa nunca jogou), então prevalecem as configurações iniciais do jogador
 		// i.e: surge no lobby, sem dinheiro, com uma mochila que comporta 10 coisas ou 15kg
-		if p := link.Value.Player; p.Id == "ghost" {
-			p.BecomeGhost()
+		if p := &link.Value.Player; p.Id == "ghost" {
+			p.Status.BecomeGhost()
 		} else {
 			p.Load()
 		}

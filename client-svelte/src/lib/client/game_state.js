@@ -41,7 +41,7 @@ const MAX_THINGS = 500
  */
 
 class GameState {
-    /** @type {Player} */
+    /** @type {Player | undefined} */
     player
     current_map = ""
 
@@ -70,12 +70,20 @@ class GameState {
             this.tileMap.height*16 - this.screen.height
         )         
     }
+    /**
+     * @param {number} x
+     * @param {number} y
+     */
     snapTo(x,y){
         this.screen.cameraX = x - this.screen.width/2 
         this.screen.cameraY = y - this.screen.height/2
         this.constrainCamera()
     }
-    // faz a "câmera" olhar pra uma posição x/y no espaço.
+    /**
+     * faz a camera olhar para uma posição
+     * @param {number} x
+     * @param {number} y
+     */
     lookAt(x,y){
         let dx = x - this.screen.cameraX - this.screen.width/2
         let dy = y - this.screen.cameraY - this.screen.height/2
@@ -186,7 +194,7 @@ class GameState {
     messageText=""
     messageTimer=0
 
-    /** @type {import("./game/client/client.js").Client} */
+    /** @type {import("./game/client/client.js").Client|undefined} */
     game_client
 
     /**
@@ -199,6 +207,11 @@ class GameState {
 
 
         let interval = setInterval(()=>{
+            if(!this.game_client){
+                console.log("sem game client. desativando o interval.")
+                clearInterval(interval)
+                return
+            }
             if(this.player){
                 if(this.target_map){
                     const msg = Message.Empty()
@@ -263,7 +276,13 @@ class GameState {
         this.target_map = map_name
     }
 
+    /**
+     * @param {string} string
+     */
     sendChat(string){
+        if(!this.game_client){
+            throw "sem game client"
+        }
         const msg = Message.Empty()
         msg.put_i8(messages.PLAYER.CHAT)
         msg.put_i16(0)
@@ -285,8 +304,9 @@ class GameState {
      */
     teleportPlayerTo(map_name, target ){
         const {x,y,zone} = target
+        debug_text(`indo para ${map_name} ${x} ${y}`)
         let exit_dir = this.player ? this.player.direction : DIR_DOWN
-        this.tileMap.loadFromServer(map_name).then( ()=>{
+        return this.tileMap.loadFromServer(map_name).then( ()=>{
             this._scene.reset()
             this._alives.reset()
             this._other_clients.clear()
@@ -312,10 +332,37 @@ class GameState {
             // jogador
             this.spawn(this.player)
                 .setTarget(this.player)
-                .snapTo(pos_x,pos_y)
+                .snapTo(this.player.x,this.player.y)
+
             this.player.direction=exit_dir
             ControlarPlayer(this,this.player)    
         })
+    }
+
+    /**
+     * @param {Message} msg
+     */
+    msg_player_vital(msg){
+        if(!this.player){
+            return
+        }
+        const energy = msg.take_i8(),
+              hunger = msg.take_i8(),
+              thirst = msg.take_i8(),
+              health = msg.take_i8()
+        this.player.setVital({
+            hunger,thirst,energy,health
+        })  
+    }
+
+    /**
+     * @param {Message} msg
+     */
+    msg_player_set_map(msg){
+        const map_name = msg.take_short_string(),
+              dest_x = msg.take_i16(), 
+              dest_y = msg.take_i16()    
+        this.teleportPlayerTo(map_name,{x:dest_x,y:dest_y})        
     }
     /**
      * @param {Uint8Array} message 
@@ -345,11 +392,69 @@ class GameState {
                 this._other_clients.delete(player_id)
             }break;
             // servidor quer me colocar em um mapa
+            // OBS: acho que o servidor não vai mandar essa mensagem!
             case messages.SERVER.PLAYER.SET_MAP:{
-                const map_name = msg.take_short_string()
-                    const dest_x = msg.take_i16(), 
-                          dest_y = msg.take_i16()    
-                    this.teleportPlayerTo(map_name,{x:dest_x,y:dest_y})
+                this.msg_player_set_map(msg)
+            }break;
+            case messages.SERVER.PLAYER.VITAL:{
+                this.msg_player_vital(msg)                              
+            }break;
+            // será que é melhor fazer isso ou ter mensagens separadas
+            // para o estado e posição?
+            case messages.SERVER.PLAYER.FULL_STATUS:{
+                // perfil
+                const name = msg.take_short_string()
+                const handle = msg.take_short_string()
+                const sprite = msg.take_short_string()
+
+                // status
+                //------------------------
+                // PlayerStatus
+                //------------------------
+                const ghost = msg.take_bool()
+                const current_map = msg.take_short_string()
+                const x = msg.take_i32()
+                const y = msg.take_i32()
+                const energy = msg.take_i8()
+                const hunger = msg.take_i8()
+                const thirst = msg.take_i8()
+                const health = msg.take_i8()
+                const equipped_id = msg.take_i16()
+                const balance = msg.take_i32()
+
+                // bag
+                const bag_max_weight = msg.take_i16()
+                const bag_current_weight = msg.take_i16()
+                const bag_max_item_count = msg.take_i16()
+                const bag_item_count = msg.take_i16()
+                /**
+                 * @type {string[]}
+                 */
+                const bag_items = []
+                for(let i =0; i < bag_item_count;i++){
+                    bag_items.push( msg.take_short_string())
+                }
+
+                this.teleportPlayerTo(current_map,{x,y}).then( ()=>{
+                    if(!this.player){
+                        throw "o jogador foi desmaterializado!"
+                    }
+                    this.player.setProfile({
+                        name : name,
+                        handle : handle,
+                        sprite : sprite
+                    })
+                    this.player.setBag({
+                        max_weight : bag_max_weight,
+                        current_weight : bag_current_weight,
+                        max_item_count : bag_max_item_count,
+                        items : bag_items
+                    })  
+                    this.player.setStatus({
+                        hunger,thirst,energy,balance,ghost,equipped_id,health
+                    })                                      
+                })
+
             }break;
             // ------------------------------------------------------------------
             // mensagens de jogador

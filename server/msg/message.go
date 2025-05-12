@@ -1,4 +1,4 @@
-package main
+package msg
 
 import (
 	"encoding/binary"
@@ -8,39 +8,104 @@ import (
 const (
 	// mensagens enviadas pelo servidor
 	// define o ID do cliente
-	MSG_SERVER_SETID = iota + 1
+	SERVER_SETID = iota + 1
 	//  quando um cliente novo entra no mapa
-	MSG_SERVER_PLAYER_JOINED
+	SERVER_PLAYER_JOINED
 	//  quando um cliente sai do mapa
-	MSG_SERVER_PLAYER_EXITED
+	SERVER_PLAYER_EXITED
 	// manda um cliente entrar em um mapa [i8 length byte... name]
-	MSG_SERVER_PLAYER_SET_MAP
+	SERVER_PLAYER_SET_MAP
 	// manda o cliente trocar de célula
-	MSG_SERVER_PLAYER_SET_CELL
+	SERVER_PLAYER_SET_CELL
 	// informa ao cliente quem são os outros jogadores no mapa dele
-	MSG_SERVER_PLAYER_PEER_LIST
+	SERVER_PLAYER_PEER_LIST
 	// mensagem diretamente do servidor para os clientes do chat
-	// MSG_SERVER_CHAT_SEND
+	// SERVER_CHAT_SEND
+
+	// estado completo do jogador
+	SERVER_PLAYER_FULL_STATUS
+
+	// estado vital
+	SERVER_PLAYER_VITAL
 
 	// heartbeat
-	MSG_PLAYER_HEART
+	PLAYER_HEART
 	// sempre que o jogador se move ou periodicamente [i16 x,i16 y]
-	MSG_PLAYER_STATUS
+	PLAYER_STATUS
 	// quando o jogador quer entrar em um mapa diferente
-	MSG_PLAYER_ENTER_MAP
+	PLAYER_ENTER_MAP
 	// quando o jogador envia uma mensagem no chat
-	MSG_PLAYER_CHAT
+	PLAYER_CHAT
 	// quando um jogador tenta usar um quadrado (usar um npc, minerar um quadrado, fazendar um quadrado, atacar um quadrado, etc...)
-	MSG_PLAYER_USE_TILE
+	PLAYER_USE_TILE
 )
+
+func bool_to_byte(val bool) byte {
+	if val {
+		return 1
+	} else {
+		return 0
+	}
+}
 
 type Message struct {
 	bytes   []byte
 	pointer int
 }
 
+func MessageFromBytes(bytes []byte) *Message {
+	return &Message{
+		bytes:   bytes,
+		pointer: 0,
+	}
+}
+
+func (m *Message) Bytes() []byte {
+	return m.bytes
+}
+
+func (m *Message) PayloadBytes() []byte {
+	return m.bytes[1:]
+}
+
 func (m *Message) Length() int {
 	return len(m.bytes)
+}
+
+func (m *Message) PutBool(val bool) {
+	m.bytes = append(m.bytes, bool_to_byte(val))
+	m.pointer += 1
+}
+func (m *Message) PutUint8(val int) {
+	m.bytes = append(m.bytes, uint8(val))
+	m.pointer += 1
+}
+
+func (m *Message) PutInt32(val int) {
+	// trecho GPTesco
+	start := len(m.bytes)
+	m.bytes = append(m.bytes, 0, 0, 0, 0)
+	binary.BigEndian.PutUint32(m.bytes[start:], uint32(val))
+	m.pointer += 4
+}
+func (m *Message) PutInt16(val int) {
+	start := len(m.bytes)
+	m.bytes = append(m.bytes, 0, 0)
+	binary.BigEndian.PutUint16(m.bytes[start:], uint16(val))
+	m.pointer += 2
+}
+func (m *Message) PutInt8(val int) {
+	m.bytes = append(m.bytes, byte(int8(val)))
+	m.pointer += 1
+}
+
+// TODO: limitar isso a 256 caracteres porque eu sei que vai dar ruim em algum momento.
+func (m *Message) PutShortString(val string) {
+	length := len(val)
+	bytes := []byte(val)
+	m.bytes = append(m.bytes, byte(length))
+	m.bytes = append(m.bytes, bytes...)
+	m.pointer += length + 1
 }
 
 func (m *Message) SetInt16(val int16, pos int) {
@@ -66,6 +131,7 @@ func (m *Message) TakeInt32() int {
 	m.pointer += 4
 	return int(num)
 }
+
 func (m *Message) TakeShortString() (string, error) {
 	length := int(m.bytes[m.pointer])
 	if m.pointer+length+1 > len(m.bytes) {
@@ -78,7 +144,7 @@ func (m *Message) TakeShortString() (string, error) {
 }
 
 func (m *Message) IsServerMessage() bool {
-	return m.bytes[0] >= MSG_SERVER_SETID && m.bytes[0] <= MSG_SERVER_PLAYER_EXITED
+	return m.bytes[0] >= SERVER_SETID && m.bytes[0] <= SERVER_PLAYER_VITAL
 }
 func (m *Message) MessageByte() byte {
 	return m.bytes[0]
@@ -107,11 +173,8 @@ func (m *Message) GetInt16(pos int) int {
 // coisas para construir as mensagens
 
 // gera uma array de string de até 256 caracteres
-func short_str_to_byte_array(texto string) []byte {
-	tamanho := len(texto)
-	if tamanho > 255 {
-		tamanho = 255
-	}
+func StrToByteArray(texto string) []byte {
+	tamanho := min(len(texto), 255)
 
 	result := make([]byte, tamanho+1)
 	result[0] = byte(tamanho)
@@ -121,18 +184,18 @@ func short_str_to_byte_array(texto string) []byte {
 	return result
 }
 
-func i8(numero int) []byte {
+func I8(numero int) []byte {
 	return []byte{
 		byte(numero),
 	}
 }
-func i16(numero int) []byte {
+func I16(numero int) []byte {
 	return []byte{
 		byte(numero >> 8),
 		byte(numero),
 	}
 }
-func i32(numero int) []byte {
+func I32(numero int) []byte {
 	return []byte{
 		byte(numero >> 24),
 		byte(numero >> 16),
@@ -141,7 +204,8 @@ func i32(numero int) []byte {
 	}
 }
 
-func construct_message(message byte, data ...[]byte) []byte {
+// retorna um array de bytes
+func ConstructMessage(message byte, data ...[]byte) []byte {
 	total_size := 1
 	for _, v := range data {
 		total_size += len(v)

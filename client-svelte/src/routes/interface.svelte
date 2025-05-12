@@ -1,7 +1,10 @@
 <script>
+    import { begin, user_store } from "$lib/client/game/fb/fb";
+
     import { onMount } from "svelte";
     import ListaLateral from "./ListaLateral.svelte";
     import Mochila from "./Mochila.svelte";
+    import Login from "./Login.svelte";
 
     /** @type {string[]} */
     let debug_messages = $state([])
@@ -25,6 +28,7 @@
     }
 
     onMount(()=>{
+        begin()
         window.addEventListener("debug_message", event =>{
             // @ts-ignore
             debug_message(event.detail)
@@ -44,8 +48,16 @@
         text-shadow: 3px 3px 0px black;
     }
 </style>
-<ListaLateral/>
-<Mochila/>
+
+{#if $user_store.determinado}
+    {#if $user_store.logado}
+        <ListaLateral/>
+        <Mochila/>
+    {:else}
+        <Login/>
+    {/if}
+{/if}
+
 <div class="container-fluid container-sm mt-3">
     {#if debug_messages.length > 0}
         <div class="card bg-dark" style="--bs-bg-opacity: .5;">
