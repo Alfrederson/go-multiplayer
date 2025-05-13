@@ -9,11 +9,10 @@ import { DIR_DOWN, Player } from "./game/player/player.js"
 import { constrain } from "./game/util.js"
 
 import * as messages from "./game/client/messages.js"
-import * as util from "./game/client/util.js"
 
 import Stack from "./stack.js"
 import { Message } from "./game/client/client.js"
-import { chat_message, debug_text } from "./main.js"
+import { chat_message, debug_text, listen_to } from "./main.js"
 
 
 const MAX_THINGS = 500
@@ -39,6 +38,7 @@ const MAX_THINGS = 500
  * @property {RenderMethod} [renderUi] - Se ele desenha coisa na UI, definir esse método.
  * @property {RenderMethod} [render] - Renderiza.
  */
+
 
 class GameState {
     /** @type {Player | undefined} */
@@ -197,6 +197,7 @@ class GameState {
     /** @type {import("./game/client/client.js").Client|undefined} */
     game_client
 
+    remove_handler
     /**
      * handler para quando o cliente estiver conectado
      * @param {import("./game/client/client.js").Client} client 
@@ -204,7 +205,6 @@ class GameState {
     connected(client){
         this.game_client = client
         let sitting_still = 0
-
 
         let interval = setInterval(()=>{
             if(!this.game_client){
@@ -248,9 +248,17 @@ class GameState {
                 }
             }
         },100)
+
+        listen_to("spam", ev =>{
+            this.game_client?.send(new Uint8Array(Array.from({length:300},x => 3)))
+        })
     }
 
     disconnected(){
+        if(this.remove_handler){
+            this.remove_handler()
+            this.remove_handler = undefined
+        }
         this._scene.reset()
         this._alives.reset()
         this._other_clients.clear()

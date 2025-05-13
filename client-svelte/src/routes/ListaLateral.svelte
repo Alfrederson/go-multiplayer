@@ -2,6 +2,7 @@
 
     import { logar as login_firebase } from "$lib/client/game/fb/fb";
     import { player_store } from "$lib/client/game/player/player.store";
+    import { dispatch_event } from "$lib/client/main";
     import { interface_store } from "$lib/interface.store";
 
     function logar(){
@@ -15,6 +16,10 @@
         })
     }
 
+    function spam(){
+        console.log("me bane!")
+        dispatch_event('spam')
+    }
 </script>
 <style>
     .gauge {
@@ -41,6 +46,11 @@
                 <span class="icone">👤</span>
             </a>
         </li> -->
+        <li>
+            <button class="nav-link gauge" onclick={spam}>
+                <span class="icone">💣</span>
+            </button>
+        </li>
         <li>
             <span class="nav-link gauge">
                 <span class="icone">💲</span>{$player_store.status.balance}

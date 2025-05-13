@@ -64,6 +64,7 @@ func (s *Server) LoadMaps() {
 	}
 }
 
+// nem ideia de como vou fazer isso
 // func (s *Server) OpenHouse(house_name string) *ServerMap {
 // 	casa, existe := s.maps[house_name]
 // 	if existe {

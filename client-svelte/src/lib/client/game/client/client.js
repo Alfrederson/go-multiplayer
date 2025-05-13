@@ -182,6 +182,10 @@ export class Client {
             console.log("desconectado")
             throw "cliente desconectado"
         })
+
+        return (/** @type {Uint8Array<ArrayBufferLike>} */ s) => {
+            this.send(s)
+        }
     }
 
     /**
