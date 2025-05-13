@@ -63,3 +63,17 @@ func (s *Server) LoadMaps() {
 		fmt.Printf("ok!\n")
 	}
 }
+
+// func (s *Server) OpenHouse(house_name string) *ServerMap {
+// 	casa, existe := s.maps[house_name]
+// 	if existe {
+// 		return casa
+// 	}
+// 	fmt.Printf("criando sala para casa %s \n", house_name)
+
+// 	return nil
+// }
+
+// func (s *Server) CloseHouse(house_name string) {
+
+// }
