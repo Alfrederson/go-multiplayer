@@ -25,6 +25,7 @@ func main() {
 		start := time.Now()
 		path := c.Request.URL.Path
 		// raw := c.Request.URL.RawQuery
+		c.Header("Cache-Control", "None")
 		c.Next()
 		latency := time.Since(start)
 		status := c.Writer.Status()

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="left-up" width="60" height="68" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="6">
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="left-up" width="60" height="68" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="9">
  <editorsettings>
   <export target="../files/maps/cidade.json" format="json"/>
  </editorsettings>
@@ -237,5 +237,12 @@
    </properties>
   </object>
   <object id="5" name="caverna_exit" type="zone" x="272" y="768" width="16" height="15.75"/>
+  <object id="6" name="prefeitura_entry" type="portal" x="496" y="578" width="16" height="16">
+   <properties>
+    <property name="to_map" value="prefeitura"/>
+    <property name="to_zone" value="prefeitura_entry"/>
+   </properties>
+  </object>
+  <object id="8" name="prefeitura_exit" type="zone" x="496" y="600" width="16" height="16"/>
  </objectgroup>
 </map>
