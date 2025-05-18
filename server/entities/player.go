@@ -76,16 +76,23 @@ type PlayerStatus struct {
 	Health     int    `json:"health" firestore:"health"`
 	EquippedId int    `json:"equipped_id" firestore:"equipped_id"`
 	Balance    int    `json:"balance" firestore:"balance"`
+	// não são persistidos
+	DistanceWalked int `json:"-" firestore:"-"`
 }
 
 func (s *PlayerStatus) TickVitals() {
 	s.Hunger = min(100, s.Hunger+3)
 	s.Thirst = min(100, s.Thirst+1)
+	s.Energy = max(0, s.Energy-s.DistanceWalked/10)
+	s.DistanceWalked = 0
 	if s.Hunger == 100 {
 		s.Health = max(0, s.Health-1)
 	}
 	if s.Thirst == 100 {
 		s.Health = max(0, s.Health-3)
+	}
+	if s.Energy == 0 {
+		s.Health = max(0, s.Health-1)
 	}
 }
 func (s *PlayerStatus) IsGhost() bool {

@@ -9,13 +9,28 @@ import (
 	"github.com/gobwas/ws/wsutil"
 )
 
+// envia mensagem do servidor direto para o jogador
+func msg_server_direct_message(s *Server, c *Client, m string) {
+	message := msg.Message{}
+	message.PutUint8(msg.PLAYER_CHAT)
+	message.PutInt16(0)
+	message.PutShortString(m)
+	s.SendBytes(c, message.Bytes())
+}
+
+// interpreta mensagem player status enviada pelo jogador
 func msg_player_status(s *Server, c *Client, m *msg.Message) {
 	// tamanho fixo é mais fácil de fazer isso.
 	if m.Length() < 7 {
 		return
 	}
+	x := c.Player.Status.X
+	y := c.Player.Status.Y
+
 	c.Player.Status.X = m.TakeInt16()
 	c.Player.Status.Y = m.TakeInt16()
+
+	c.Player.Status.DistanceWalked += int_abs(x-c.Player.Status.X) + int_abs(y-c.Player.Status.Y)
 	//TODO: cansar o jogador com base na distância que foi percorrida.
 
 	// a gente vai ter um sistema de células
@@ -50,6 +65,7 @@ func msg_player_enter_map(s *Server, c *Client, m *msg.Message) {
 		log.Println("lendo a zona:", err)
 		return
 	}
+	// TODO: decidir o que fazer quando a pessoa estiver entrando em uma casa
 	mapa, existe := s.maps[map_name]
 	if !existe {
 		fmt.Printf("jogador tentando ir para mapa inexistente %s \n", map_name)
@@ -58,25 +74,37 @@ func msg_player_enter_map(s *Server, c *Client, m *msg.Message) {
 	portal, existe := mapa.Zones[target_zone]
 	if !existe {
 		fmt.Printf("jogador tentando ir para portal inexistente %s \n", target_zone)
+		return
 	}
 	old_map := c.Status.CurrentMap
 	x, y := portal.PickPointForRect(14, 14)
 	log.Printf("(%.6s) => %s.%s (%d,%d)", c.Player.Id, map_name, target_zone, x, y)
 
-	// s.Mapcast(old_map, c, c.Status.X, c.Status.Y, msg.MSG_SERVER_PLAYER_EXITED, msg.I16(c.Spot))
-
-	s.MapcastBytes(
-		old_map,
-		c,
-		c.Status.X,
-		c.Status.Y,
-		msg.ConstructMessage(msg.SERVER_PLAYER_EXITED, msg.I16(c.Spot)),
-	)
+	if !c.Status.IsGhost() {
+		s.MapcastBytes(
+			old_map,
+			c,
+			c.Status.X,
+			c.Status.Y,
+			msg.ConstructMessage(msg.SERVER_PLAYER_EXITED, msg.I16(c.Spot)),
+		)
+	}
 
 	s.ChangeClientRoom(c, map_name)
 	s.SendBytes(c,
 		msg.ConstructMessage(msg.SERVER_PLAYER_SET_MAP, msg.StrToByteArray(map_name), msg.I16(x), msg.I16(y)),
 	)
+}
+
+func (s *Server) RecycleClient(client *Client) {
+	// libera o ID
+	s.free_spots.Push(client.Spot)
+	client.Link.RemoveFromList()
+	// equivale a isso:
+	// s.maps[(*client).Status.CurrentMap].ActiveClients.RemoveLink(client.Link)
+
+	// devolve para o pool
+	s.free_clients.AddLink(client.Link)
 }
 
 func (s *Server) StartSession(client *Client) {
@@ -99,7 +127,6 @@ func (s *Server) StartSession(client *Client) {
 				msg_status.PutUint8(msg.SERVER_PLAYER_VITAL)
 				client.Player.Status.WriteVitalToMessage(&msg_status)
 				s.SendBytes(client, msg_status.Bytes())
-				break
 			}
 		}
 	}()
@@ -110,7 +137,9 @@ func (s *Server) StartSession(client *Client) {
 		jogador_saiu <- true
 
 		// notifica os outros jogadores de que este aqui saiu
-		s.Mapcast(client.Status.CurrentMap, client, client.Status.X, client.Status.Y, msg.SERVER_PLAYER_EXITED, id_bytes)
+		if !client.Status.IsGhost() {
+			s.Mapcast(client.Status.CurrentMap, client, client.Status.X, client.Status.Y, msg.SERVER_PLAYER_EXITED, id_bytes)
+		}
 
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
@@ -120,18 +149,12 @@ func (s *Server) StartSession(client *Client) {
 			delete(s.player_by_id, client.Id)
 		}
 
-		// libera o ID
-		s.free_spots.Push(client.Spot)
-		log.Printf("spot %d agora está livre", client.Spot)
-
 		// fecha a conexão
 		(*client).Connection.Close()
 
 		// tira o cliente do mapa em que ele está
-		s.maps[(*client).Status.CurrentMap].ActiveClients.RemoveLink(client.Link)
 
-		// retorna para o pool
-		s.free_clients.AddLink(client.Link)
+		s.RecycleClient(client)
 
 		// persiste o jogador
 		client.Player.Save()
@@ -141,8 +164,6 @@ func (s *Server) StartSession(client *Client) {
 		*client = Client{}
 	}()
 
-	log.Println("botando o cliente na sala ", client.Status.CurrentMap)
-
 	if !client.Player.Status.IsGhost() {
 		s.player_by_id[client.Player.Id] = &client.Player
 	}
@@ -151,7 +172,7 @@ func (s *Server) StartSession(client *Client) {
 
 	// diz par ao jogador qual é o ID dele
 	s.Send(client, msg.SERVER_SETID, id_bytes)
-	// diz para o jogador quem são os outros jogadores que estão lá
+	// TODO: diz para o jogador quem são os outros jogadores que estão lá
 	// (esse é difícil)
 
 	// Envia o estado completo do jogador
@@ -184,11 +205,15 @@ func (s *Server) StartSession(client *Client) {
 		if len(received_msg) < 3 {
 			continue
 		}
+		if len(received_msg) > 256 {
+			// ejeta o jogador
+			msg_server_direct_message(s, client, "bye!")
+			return
+		}
 
 		// muda o ID da mensagem para chegar nos outros jogadores
 		// propriamente identificada
-		received_msg[1] = id_bytes[0]
-		received_msg[2] = id_bytes[1]
+		copy(received_msg[1:3], id_bytes[:2])
 
 		message := msg.MessageFromBytes(received_msg)
 
@@ -203,8 +228,14 @@ func (s *Server) StartSession(client *Client) {
 		switch msg_byte {
 
 		case msg.PLAYER_STATUS:
+			if client.Status.IsGhost() {
+				continue
+			}
 			msg_player_status(s, client, message)
 		case msg.PLAYER_CHAT:
+			if client.Status.IsGhost() {
+				continue
+			}
 			msg_player_chat(s, client, message)
 		// na verdade isso vai ser uma mensagem "PLAYER_USE_PORTAL"
 		// e eu vou checar se o jogador está mesmo perto do portal

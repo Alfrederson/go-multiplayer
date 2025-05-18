@@ -26,13 +26,25 @@ import { user_store } from "./game/fb/fb.js"
 
 /**
  * @param {string} type
- * @param {any} value
+ * @param {any} [value]
  */
-function dispatch_event(type,value){
+export function dispatch_event(type,value){
   window.dispatchEvent(new CustomEvent(type,{
     detail : value
   }))
 }
+
+/**
+ * @param {any} type
+ * @param {{ (this: Document, ev: any): any; (this: Document, ev: any): any; }} handler
+ */
+export function listen_to(type, handler){
+  window.addEventListener(type,handler)
+  return ()=>{
+    window.removeEventListener(type,handler)
+  }
+}
+
 /**
  * @param {string} txt
  */
@@ -46,6 +58,8 @@ export function chat_message(txt){
 export function debug_text(txt){
   dispatch_event("debug_message",txt)
 }
+
+
 
 /** @implements {IApp} */
 class MMORPG {

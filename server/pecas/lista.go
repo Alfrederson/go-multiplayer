@@ -1,5 +1,7 @@
 package pecas
 
+import "errors"
+
 // uma lista de PONTEIROS
 // não tentar usar para colocar "valores primitivos" porque não vai dar certo
 // a ideia é ter uma lista de links pré-alocados e utilizá-los como spots
@@ -18,6 +20,17 @@ func (l *Link[T]) Set(val *T) *Link[T] {
 
 func (l *Link[T]) Next() *Link[T] {
 	return l.next
+}
+
+func (l *Link[T]) GetList() *List[T] {
+	return l.list
+}
+
+func (l *Link[T]) RemoveFromList() error {
+	if l.list == nil {
+		return errors.New("link não está em nenhuma lista")
+	}
+	return l.list.RemoveLink(l)
 }
 
 type List[T any] struct {
