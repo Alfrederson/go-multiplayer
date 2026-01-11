@@ -1,6 +1,10 @@
 <script>
     import { user_store } from "$lib/client/game/fb/fb";
+    import { logar } from "$lib/client/game/fb/fb";
 
+    function fazer_login(){
+        logar()                
+    }
 </script>
 <style>
     .item {
@@ -29,9 +33,9 @@
                     <button class="btn btn-close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Para jogar nosso singelo joguinho, você deve estar logado.</p>
+                    <p>faça login para voltar para onde você estava.</p>
                     <div class="input-group">
-                        <button class="btn btn-dark form-control">Fazer login com o Google</button>
+                        <button class="btn btn-dark form-control" onclick={fazer_login}>Fazer login com o Google</button>
                     </div>
                 </div>
             </div>

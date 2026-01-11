@@ -173,6 +173,8 @@ class GameMap {
      * @param {string} map_name
      */
     async loadFromServer(map_name){
+        console.log("[GameMap] loading map ",map_name)
+
         this.loaded = false
         let result = await fetch(SERVER_MAP_URL + map_name + ".json")
         if (result.status !== 200){

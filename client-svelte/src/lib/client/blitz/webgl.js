@@ -1,5 +1,5 @@
 import { mat4 } from "gl-matrix"
-import { IB2D } from "./blitz"
+import { IB2D, Unload } from "./blitz"
 
 import { ImageDrawer } from "./webgl/drawer/image.js"
 import { TileMapDrawer } from "./webgl/drawer/tilemap.js"
@@ -63,6 +63,8 @@ class WGL_B2D {
     /** @type {boolean} */
     initialized = false
 
+    _finished = false
+
     /** @type {WebGLRenderingContext?} */
     ctx = null
 
@@ -109,6 +111,12 @@ class WGL_B2D {
 
         return image.loadImage( this.ctx, imageName,frameWidth,frameHeight )
     }
+
+    /**
+     * @type {function[]}
+     */
+    _finalizers = []
+
     /**
      * Inicia os gráficos.
      * @param {number} width 
@@ -145,8 +153,6 @@ class WGL_B2D {
         }
         letterBox()
 
-        
-
         let _webgl = canvas.getContext("webgl")
         if(!_webgl)
             throw "Não consegui pegar um contexto de renderização."
@@ -178,13 +184,27 @@ class WGL_B2D {
         this.ctx.blendFunc(this.ctx.SRC_ALPHA, this.ctx.ONE_MINUS_SRC_ALPHA);
         
         // ajusta o tamanho do canvas pra ficar  bunitim
-        window.addEventListener("resize", ()=>{
+
+        const resize_handler = ()=>{
             letterBox()
             this.ctx?.viewport(0,0, this.ctx.canvas.width, this.ctx.canvas.height)
-        })
+        }
+
+        window.addEventListener("resize", resize_handler)
+
 
         this.initialized=true
+        Unload(()=>{
+            window.removeEventListener("resize",resize_handler)
+            this.ctx=null
+            this.ctx2d=null
+        })
     }
+
+    EndGraphics(){
+        console.info("closing graphics (this doesn't do anything)")
+    }
+
     /**
      * Limpa a tela com a cor especificada.
      * @param {number} r 
@@ -296,6 +316,8 @@ class WGL_B2D {
             throw "não consigo desenhar porque o contexto não foi inicializado"
         if(!this.renderTarget)
             throw "não consigo desenhar porque não tenho um renderTarget"
+        if(this._finished)
+            throw "já morri bicho"
         render_to_texture.begin( this.ctx, this.renderTarget )
         callback( this )
         render_to_texture.end( this.ctx, this.renderTarget )

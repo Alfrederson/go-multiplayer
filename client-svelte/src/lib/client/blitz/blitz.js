@@ -11,6 +11,12 @@ class IB2D{
      */
     Graphics(width,height,elementId){}
 
+
+    /**
+     * finaliza os gráficos.
+     */
+    EndGraphics(){}
+
     /**
      * 
      * @param {function(IB2D):void} callback 
@@ -156,6 +162,11 @@ class IApp {
     draw(b){}
 }
 
+/** @type {((arg0: IB2D) => void)[]} */
+const _preloadFunctions = []
+/** @type {((arg0: IB2D) => void)[]} */
+const _unloadFunctions = []
+
 /**
  * Registra uma função para ser executada no preload.
  * O preload é executado antes do initialize.
@@ -167,31 +178,74 @@ function Preload(fn){
 }
 
 /**
- * @type {((arg0: IB2D) => void)[]}
+ * Registra uma função para ser executada quando a engine é finalizada
+ * @param {function(IB2D):void} fn 
  */
-const _preloadFunctions = []
+function Unload(fn){
+    _unloadFunctions.push(fn)
+}
+
 
 /**
  * Inicializa a engine. game deve implementar a interface iapp.
+ * obs: o que estava pretendendo fazer com isso?
  * @param {IApp} game 
  * @param {IB2D} b2d
+ * @returns {function}
  */
+function Start(game, b2d){
+    const origCreate = WebGLRenderingContext.prototype.createTexture;
+    const origDelete = WebGLRenderingContext.prototype.deleteTexture;
+    let textureCount = 0;
 
-async function Start(game, b2d){
+    WebGLRenderingContext.prototype.createTexture = function () {
+        const tex = origCreate.call(this);
+        textureCount++;
+        console.log("createTexture. c=",textureCount)
+        return tex;
+    };
+
+    WebGLRenderingContext.prototype.deleteTexture = function (tex) {
+        if (tex) textureCount--;
+        console.log("deleteTexture. c=",textureCount)
+        return origDelete.call(this, tex);
+    };
+
+    let finished = false
 
     const drawer = game.draw.bind(game)
-    
+    let animation_frame_id=0
     function draw(){
         b2d.Draw( drawer ) 
-        requestAnimationFrame(draw)
+        animation_frame_id = requestAnimationFrame(draw)
     }
 
     game.setup(b2d)
 
-    for(let fn of _preloadFunctions) await fn(b2d)
+    Promise.all(_preloadFunctions.map( f => f(b2d) )).then( function(results){
+        console.log("finished preloading")
+        _preloadFunctions.length = 0
+        draw()
+    })
 
-    draw()
+
+
+    return function (){
+        console.log("bye!")
+        cancelAnimationFrame(animation_frame_id)
+        
+        _unloadFunctions.forEach( f=> f(b2d) )
+        _unloadFunctions.length = 0
+
+        b2d.EndGraphics()
+
+        WebGLRenderingContext.prototype.createTexture = origCreate
+        WebGLRenderingContext.prototype.deleteTexture = origDelete
+
+    }
 }
+
+
 
 const PI_BY_180 = (Math.PI / 180)
 
@@ -227,4 +281,5 @@ export {
     // ciclo de vida
     Start,
     Preload,
+    Unload
 }

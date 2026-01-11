@@ -128,8 +128,9 @@ function resize_screen(width,height){
 }
 
 function start_game(){
-  Start(new MMORPG(), new WGL_B2D())
+  return Start(new MMORPG(), new WGL_B2D())
 }
+
 
 export {
   SCREEN_WIDTH,

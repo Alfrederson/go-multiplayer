@@ -1,6 +1,11 @@
-class WGLImage {
+import { Unload } from "../blitz"
+
+export class WGLImage {
     /** @type {WebGLTexture|undefined} */
     texture
+
+    /** @type {string} */
+    name = ""
 
     /** @type {number[][]|undefined} */
     uvs
@@ -24,6 +29,7 @@ class WGLImage {
     getHeight(){}
     getFrameWidth(){}
     getFrameHeight(){}    
+
 }
 
 
@@ -39,12 +45,14 @@ const _imageMap = new Map()
  * @param {number} frameHeight
  * @returns {Promise<WGLImage>|WGLImage}
  */
-function loadImage(ctx, imageName, frameWidth, frameHeight){
+export function loadImage(ctx, imageName, frameWidth, frameHeight){
+    console.info("loading ",imageName)
     let img = _imageMap.get(imageName)
     if (img) return img;
 
     return new Promise( (resolve,reject)=>{        
         const result = new WGLImage()
+        result.name = imageName
         const image = new Image()
         image.onload = function(){            
             result.width = image.width
@@ -93,16 +101,17 @@ function loadImage(ctx, imageName, frameWidth, frameHeight){
             _imageMap.set(imageName, result)
 
             resolve(result)
-            console.log(imageName,"carregado")
+            console.info("loaded",imageName)
+
+            Unload((b2d)=>{
+                console.info("unloading"+imageName)
+                ctx.deleteTexture(texture)
+                _imageMap.delete(imageName)
+            })
         }
         image.onerror = function(){
             reject("não consegui carregar " + imageName)
         }
         image.src = imageName
     })
-}
-
-export {
-    loadImage,
-    WGLImage
 }

@@ -3,13 +3,21 @@
     import { onMount } from "svelte";
 
     onMount(()=>{
-        start_game()
-        window.addEventListener("resize", event =>{
+        const finisher = start_game()
+
+        function resize_handler(event){
             let width,height
             width = window.innerWidth
             height = window.innerHeight
             resize_screen(width,height)
-        })
+        }
+
+        window.addEventListener("resize", resize_handler)
+        return function(){
+            finisher()
+            window.removeEventListener("resize",resize_handler)
+            console.log("kill_game()")
+        }
     })
 </script>
 <style>

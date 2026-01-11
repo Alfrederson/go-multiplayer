@@ -8,6 +8,7 @@
 import { mat4 } from "gl-matrix"
 import { initShaderProgram } from "./shader"
 import { nearestPowerOf2 } from "../webgl"
+import { Unload } from "../blitz"
 
 const vsSource = `
     attribute vec4 aVertexPosition;
@@ -32,9 +33,12 @@ const fsSource = `
 const model_view_matrix = mat4.create()
 const projection_matrix = mat4.create()
 
+/** @type {WebGLProgram} */
 let shader
 let program_info
+/** @type {WebGLBuffer} */
 let texture_coordinate_buffer
+/** @type {WebGLBuffer} */
 let position_buffer
 
 function initTextureCoordinateBuffer(ctx){
@@ -151,6 +155,14 @@ function init(ctx,width, height){
     mat4.scale(model_view_matrix,model_view_matrix,
         [tex_width,-tex_height,1]
     )    
+
+    Unload(()=>{
+        ctx.deleteBuffer(position_buffer)
+        ctx.deleteBuffer(texture_coordinate_buffer)
+        ctx.deleteFramebuffer(fb)
+        ctx.deleteTexture(targetTex)
+        ctx.deleteProgram(shader)
+    })
     return {
         fb,
         tex: targetTex,

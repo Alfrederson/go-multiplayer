@@ -1,3 +1,4 @@
+import { Unload } from "../../blitz"
 import { nearestPowerOf2 } from "../../webgl"
 import { initShaderProgram } from "../shader"
 
@@ -15,8 +16,8 @@ const vs_source = `
     uniform vec2 inverse_tile_size;
 
     void main(){
-        pixel_coord = (texture * viewport_size) + view_offset;
-        tex_coord = pixel_coord * inverse_tile_size;
+        pixel_coord = ((texture * viewport_size) + view_offset)*2.0;
+        tex_coord = pixel_coord * (inverse_tile_size*2.0);
         gl_Position = vec4(position, 0.0, 1.0);
     }
 `
@@ -36,30 +37,63 @@ const fs_source = `
 
     void main(){
       vec2 b = inverse_map_pixel_size;
-      vec4 tile = texture2D(tiles, pixel_coord * b ) * 255.0;
+      vec4 tile = texture2D(tiles, pixel_coord * b) * 255.0;
+      vec4 alpha = texture2D(tiles, pixel_coord * b);
 
-      vec2 tile_coord = pixel_coord * inverse_tile_size;
-      vec2 pixel_coord_in_tileset = fract(tex_coord) + tile.xy;
+      vec2 tile_coord = pixel_coord * (inverse_tile_size);
+      vec2 pixel_coord_in_tileset = fract(tex_coord*0.5) + tile.xy;
       gl_FragColor = texture2D(
         tileset,
-        pixel_coord_in_tileset*tile_size*inverse_tileset_texture_size
-      );
+        pixel_coord_in_tileset*(tile_size*0.5)*(inverse_tileset_texture_size)
+      ) * vec4(1.0,1.0,1.0,alpha.a);
     }
 `
 
+// GAMBI: usar metade da largura dos tiles para poder usar
+//        o chipset do RPG Maker
+/**
+ * 
+ * @param {number[][]} array - array de tiles
+ * @param {number} tex_width - largura da textura dos offsets
+ * @param {number} tex_height - altura da textura dos offsets
+ * @param {number} tileset_cols - quantas colunas tem no tileset
+ * @returns 
+ */
 function tile_buffer_from_array(array,tex_width,tex_height,tileset_cols){
+
+  // tileset_cols só funciona quando a gente está usando um tileset simples
   const height = array.length
   const width = array[0].length
+
   const buffer = new Uint8Array(tex_width*tex_height*4)
-  for(let y = 0; y < height; y ++){
-    for(let x = 0; x < width; x++){
-      const cell = (y * tex_width + x)*4
-      const tile = array[y][x]
-      const tile_x = tile % tileset_cols
-      const tile_y = (tile / tileset_cols)|0
-      buffer[cell] = tile_x-1
-      buffer[cell+1] = tile_y
-      buffer[cell+2] = (x/width)*255
+
+  // pra cada tile do mapa a gente faz tipo
+
+  //   (x,y)+(0,0) (x,y)+(1,0)
+  //   (x,y)+(0,1) (x,y)+(1,1)
+
+  // pra cada tile do mapa original...
+  for(let y = 0; y < height; y++){
+    for(let x = 0; x < width; x++) {
+      for(let sub_y = 0; sub_y < 2; sub_y++){
+        for(let sub_x = 0; sub_x < 2; sub_x++){
+          const cell = ((y*2+sub_y) * tex_width + (x*2+sub_x))*4
+          const tile = array[y][x]
+          
+          const tile_x = tile % (tileset_cols)
+          const tile_y = (tile / (tileset_cols))|0
+
+          // r = offset x
+          buffer[cell] = (tile_x-1)*2 + sub_x
+          // g = offset y
+          buffer[cell+1] = tile_y*2 + sub_y
+          // b = ?
+          // a = alfa
+          buffer[cell+3] = sub_x == sub_y ? 255 : 125
+          //buffer[cell+2] = (x/width)*255
+
+        }
+      }
     }
   }
   return buffer
@@ -120,6 +154,7 @@ export class TileMap{
    * @param {import("../image").WGLImage} tileset 
    */
   createTexture(ctx,tileset){
+    console.info("creating texture for ",tileset.name)
     this.inverse_tileset_width = 1/tileset.width
     this.inverse_tileset_height = 1/tileset.height
     this.tile_width = tileset.frameWidth
@@ -128,12 +163,25 @@ export class TileMap{
     this.inverse_tile_height = 1/tileset.frameHeight
     this.tileset_rows = tileset.height / tileset.frameHeight
     this.tileset_cols = tileset.width / tileset.frameWidth
-    this.tex_width = nearestPowerOf2(this.width)
-    this.tex_height = nearestPowerOf2(this.height)
+    // o mapa é representado como uma textura
+    // onde os componentes r e g são offsets x e y no 
+    // tilemap.
+
+    // a gente precisa de uma textura com dobro da largura e dobro da altura
+    // para conseguir usar os subtiles.
+    this.tex_width = nearestPowerOf2(this.width*2)  
+    this.tex_height = nearestPowerOf2(this.height*2)
+
     this.inverse_map_pixel_width = 1/(this.tex_width * this.tile_width)
-    this.inverse_map_pixel_height = 1/(this.tex_height * this.tile_height)    
+    this.inverse_map_pixel_height = 1/(this.tex_height * this.tile_height)
+
     const buffer = tile_buffer_from_array(this.tiles,this.tex_width,this.tex_height,this.tileset_cols)
     this.setTextureFromTileBuffer(ctx,buffer,this.tex_width,this.tex_height)
+
+    Unload(()=>{
+      console.info("[TileMap] deleting tile offset texture")
+      ctx.deleteTexture(this.texture)
+    })
   }
 
   updateTiles(new_tiles){
@@ -148,7 +196,14 @@ export class TileMapDrawer{
   screen_width
   screen_height
 
+  /**
+   * 
+   * @param {WebGLRenderingContext} ctx 
+   * @param {number} screen_width 
+   * @param {number} screen_height 
+   */
   constructor(ctx,screen_width,screen_height){
+    console.info("[TileMapDrawer] creating")
     this.screen_width = screen_width
     this.screen_height = screen_height
 
@@ -184,6 +239,13 @@ export class TileMapDrawer{
        1,  1, 1, 0,
       -1,  1, 0, 0
     ]),ctx.STATIC_DRAW)
+
+    Unload(()=>{
+      console.info("deleting position buffer")
+      ctx.deleteBuffer(this.position_buffer)
+      console.info("deleting shader")
+      ctx.deleteProgram(this.shader)
+    })    
   }
 
   /**
@@ -215,6 +277,7 @@ export class TileMapDrawer{
     // scroll do mapa
     ctx.uniform2fv(this.program_info.u.view_offset,[-x,-y])
 
+    // GAMBI: dividir 16x16 em 4x 8x8 pra conseguir usar o chipset de RPG Maker 2k
     ctx.uniform2fv(this.program_info.u.viewport_size, [this.screen_width, this.screen_height])
     ctx.uniform2fv (this.program_info.u.tile_size,  [tilemap.tile_width,tilemap.tile_height])
     ctx.uniform2fv(this.program_info.u.inverse_tile_size, [tilemap.inverse_tile_width,tilemap.inverse_tile_height])
