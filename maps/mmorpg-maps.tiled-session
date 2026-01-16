@@ -33,22 +33,22 @@
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 2,
-            "selectedLayer": 2,
+            "scale": 0.75,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 529,
-                "y": 511
+                "x": 337.3333333333333,
+                "y": 770.6666666666666
             }
         },
         "cidade.tmx": {
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 1,
-            "selectedLayer": 0,
+            "scale": 8,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 636,
-                "y": 470
+                "x": 506.125,
+                "y": 583.625
             }
         },
         "overworld.tsx": {
@@ -62,8 +62,19 @@
             "scale": 1.5,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 340.33333333333337,
-                "y": 203.99999999999997
+                "x": 376.66666666666663,
+                "y": 458
+            }
+        },
+        "prefeitura.tmx": {
+            "expandedObjectLayers": [
+                4
+            ],
+            "scale": 3,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 201.33333333333334,
+                "y": 272.3333333333333
             }
         },
         "rpg_maker.tsx": {
@@ -73,12 +84,13 @@
     },
     "last.exportedFilePath": "A:/dockers/backend_game/files/maps",
     "last.imagePath": "A:/Program Files (x86)/ASCII/RPG2000/RTP/ChipSet",
-    "map.height": 64,
-    "map.lastUsedExportFilter": "Mapa binário para o MMORPG compactado com RLE (*.lmuz)",
+    "last.objectTemplatePath": "A:/dockers/backend_game/maps",
+    "map.height": 24,
+    "map.lastUsedExportFilter": "Ficheiros de mapa JSON (*.tmj *.json)",
     "map.lastUsedFormat": "tmx",
-    "map.tileHeight": 8,
-    "map.tileWidth": 8,
-    "map.width": 64,
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 24,
     "openFiles": [
     ],
     "project": "mmorpg-maps.tiled-project",

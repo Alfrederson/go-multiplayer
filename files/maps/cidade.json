@@ -320,6 +320,39 @@
                  "width":16,
                  "x":272,
                  "y":768
+                }, 
+                {
+                 "height":16,
+                 "id":6,
+                 "name":"prefeitura_entry",
+                 "properties":[
+                        {
+                         "name":"to_map",
+                         "type":"string",
+                         "value":"prefeitura"
+                        }, 
+                        {
+                         "name":"to_zone",
+                         "type":"string",
+                         "value":"prefeitura_entry"
+                        }],
+                 "rotation":0,
+                 "type":"portal",
+                 "visible":true,
+                 "width":16,
+                 "x":496,
+                 "y":578
+                }, 
+                {
+                 "height":16,
+                 "id":8,
+                 "name":"prefeitura_exit",
+                 "rotation":0,
+                 "type":"zone",
+                 "visible":true,
+                 "width":16,
+                 "x":496,
+                 "y":600
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -328,7 +361,7 @@
          "y":0
         }],
  "nextlayerid":5,
- "nextobjectid":6,
+ "nextobjectid":9,
  "orientation":"orthogonal",
  "renderorder":"left-up",
  "tiledversion":"1.10.2",
