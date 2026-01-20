@@ -84,6 +84,8 @@ class MMORPG {
           disconnected: () => this.gameState.disconnected(),
           error: (/** @type {any} */ x) => this.gameState.error(x)
         },u.token)    
+      }else{
+        this.client.disconnect()
       }
     })
 
@@ -116,6 +118,10 @@ class MMORPG {
     this.then=now
     this.gameState.update(dT)
     this.gameState.render(b)
+  }
+
+  end(){
+    this.gameState.end()
   }
 }
 

@@ -63,16 +63,26 @@ export class Message {
         return result
     }
 
+    /**
+     * @param {number} number
+     */
     put_i8(number){
         this.#buffer.push( number & 0xFF )
         return this
     }
 
+    /**
+     * @param {number} number
+     */
     put_i16(number){
         this.#buffer.push( number >> 8) & 0xFF
         this.#buffer.push ( number & 0xFF)
         return this
     }
+
+    /**
+     * @param {number} number
+     */
     put_i32(number){
         this.#buffer.push( number >> 24) & 0xFF
         this.#buffer.push( number >> 16) & 0xFF
@@ -99,13 +109,14 @@ export class Message {
 }
 
 export class Client {
-    /** @type {WebSocket} */
-    #socket
+    /** @type {WebSocket?} */
+    #socket = null
     
     #heartBeat
 
     /** @type {function(Uint8Array):void} */
     #listener
+    
     #reconnectTimeout = 0
 
     #lastSentMessageTime = 0
@@ -117,7 +128,7 @@ export class Client {
     }
 
     connected(){
-        return this.#socket.readyState == WebSocket.OPEN
+        return this.#socket?.readyState == WebSocket.OPEN
     }
 
     /**
@@ -128,8 +139,8 @@ export class Client {
      *  listener: (arg0:Uint8Array) => void,
      *  connected: (arg0:Client)=> void,
      *  disconnected : ()=> void,
-     *  error : ()=>void
-     * }} 
+     *  error : (arg0:any) => void
+     * }} handler
      * @param {string} token
      */
     connect(url, {listener,connected,disconnected,error}, token){
@@ -150,7 +161,7 @@ export class Client {
                 }
                 const now = performance.now()
                 if(now >= (this.#lastSentMessageTime + 250)){
-                    this.#socket.send(new Uint8Array([messages.PLAYER.HEART]))
+                    this.#socket?.send(new Uint8Array([messages.PLAYER.HEART]))
                     this.#lastSentMessageTime = now
                 }
             },125)
@@ -167,10 +178,9 @@ export class Client {
 
         socket.addEventListener("error", e =>{
             if(error){
-                error()
+                error(e)
             }
             clearInterval(this.#heartBeat)
-            console.error(e)
             throw "erro de websocket"
         })
 
@@ -188,6 +198,9 @@ export class Client {
         }
     }
 
+    disconnect(){
+        this.#socket?.close()
+    }
     /**
      * 
      * @param {Uint8Array} data 

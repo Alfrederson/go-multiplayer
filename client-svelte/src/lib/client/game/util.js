@@ -1,3 +1,6 @@
+import { writable } from "svelte/store"
+import { SERVER_URL } from "../config"
+
 function constrain(num, from, to){
     return Math.max(from, Math.min(num,to))
 }
@@ -55,6 +58,7 @@ function dice(sides){
 function diff(a,b){
     return a > b ? a-b : b-a
 }
+
 
 export {
     constrain, 

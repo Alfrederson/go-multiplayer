@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -8,6 +8,12 @@ import (
 	"github.com/Alfrederson/backend_game/msg"
 	"github.com/gobwas/ws/wsutil"
 )
+
+type RemoteMessageContext struct {
+	*Server
+	*Client
+	*msg.Message
+}
 
 // envia mensagem do servidor direto para o jogador
 func msg_server_direct_message(s *Server, c *Client, m string) {
@@ -96,6 +102,28 @@ func msg_player_enter_map(s *Server, c *Client, m *msg.Message) {
 	)
 }
 
+// isso vai ser chamado pela VM.
+// func event_server_ask(s *Server, c *Client) {
+// }
+
+func msg_event_player_ok(s *Server, c *Client, m *msg.Message) {
+	// o que eu faço com a mensagem agora?
+	// a gente não manda nenhuma mensagem pro jogador confirmando
+	// então a gente torce para a pessoa não ter modificado o cliente
+	c.Player.Status.UnblockInput()
+}
+
+// aqui a gente tem que mandar uma mensagem para um canal
+// que vai resumear uma co-rotina
+func msg_event_player_answer(ctx RemoteMessageContext) {
+	// a resposta é para qual pergunta?
+	ask_id := ctx.Message.TakeInt8()
+	// respondeu o que?
+	anwser := ctx.Message.TakeInt8()
+	log.Println("jogador respondeu ", ask_id, "com", anwser)
+	ctx.Client.Player.Status.UnblockInput()
+}
+
 func (s *Server) RecycleClient(client *Client) {
 	// libera o ID
 	s.free_spots.Push(client.Spot)
@@ -122,7 +150,6 @@ func (s *Server) StartSession(client *Client) {
 				return
 			case <-ticker.C:
 				client.Player.Status.TickVitals()
-
 				msg_status := msg.Message{}
 				msg_status.PutUint8(msg.SERVER_PLAYER_VITAL)
 				client.Player.Status.WriteVitalToMessage(&msg_status)
@@ -153,7 +180,6 @@ func (s *Server) StartSession(client *Client) {
 		(*client).Connection.Close()
 
 		// tira o cliente do mapa em que ele está
-
 		s.RecycleClient(client)
 
 		// persiste o jogador
@@ -225,8 +251,10 @@ func (s *Server) StartSession(client *Client) {
 		// faz algumas interpretações
 		msg_byte := message.TakeInt8()
 		message.Skip(2) // bytes do ID
-		switch msg_byte {
 
+		ctx := RemoteMessageContext{Server: s, Client: client, Message: message}
+
+		switch msg_byte {
 		case msg.PLAYER_STATUS:
 			if client.Status.IsGhost() {
 				continue
@@ -241,6 +269,10 @@ func (s *Server) StartSession(client *Client) {
 		// e eu vou checar se o jogador está mesmo perto do portal
 		case msg.PLAYER_ENTER_MAP:
 			msg_player_enter_map(s, client, message)
+		case msg.EVENT_PLAYER_ANSWER:
+			msg_event_player_answer(ctx)
+		case msg.EVENT_PLAYER_OK:
+			msg_event_player_ok(s, client, message)
 		}
 	}
 }

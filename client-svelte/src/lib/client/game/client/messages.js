@@ -18,3 +18,8 @@ export const PLAYER = {
     CHAT : 12,
     USE_TILE : 13 // quando a gente for minerar, fazendar, etc.
 }
+
+export const EVENT = {
+    SERVER_ASK : 14,
+    PLAYER_ANSWER : 15
+}

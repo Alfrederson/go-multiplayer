@@ -160,6 +160,7 @@ class IApp {
     setup(b){}
     /** @param {IB2D} b */
     draw(b){}
+    end(){}
 }
 
 /** @type {((arg0: IB2D) => void)[]} */
@@ -201,13 +202,11 @@ function Start(game, b2d){
     WebGLRenderingContext.prototype.createTexture = function () {
         const tex = origCreate.call(this);
         textureCount++;
-        console.log("createTexture. c=",textureCount)
         return tex;
     };
 
-    WebGLRenderingContext.prototype.deleteTexture = function (tex) {
+    WebGLRenderingContext.prototype.deleteTexture = function (/** @type {WebGLTexture} */ tex) {
         if (tex) textureCount--;
-        console.log("deleteTexture. c=",textureCount)
         return origDelete.call(this, tex);
     };
 
@@ -222,16 +221,17 @@ function Start(game, b2d){
 
     game.setup(b2d)
 
-    Promise.all(_preloadFunctions.map( f => f(b2d) )).then( function(results){
-        console.log("finished preloading")
-        _preloadFunctions.length = 0
-        draw()
-    })
+    _preloadFunctions.forEach( f => f(b2d) )
 
+    // Promise.all(_preloadFunctions.map( f => f(b2d) )).then( function(results){
+    //     console.log("finished preloading")
+    //     _preloadFunctions.length = 0
+    // })
 
+    draw()
 
     return function (){
-        console.log("bye!")
+        game.end()
         cancelAnimationFrame(animation_frame_id)
         
         _unloadFunctions.forEach( f=> f(b2d) )

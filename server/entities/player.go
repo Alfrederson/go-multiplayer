@@ -66,16 +66,18 @@ func (b *Bag) Add(item Item) error {
 
 type PlayerStatus struct {
 	// ghost: false => jogador normal. true => espectador
-	Ghost      bool   `json:"-" firestore:"ghost"`
-	CurrentMap string `json:"current_map" firestore:"current_map"`
-	X          int    `json:"x" firestore:"x"`
-	Y          int    `json:"y" firestore:"y"`
-	Energy     int    `json:"energy" firestore:"energy"`
-	Hunger     int    `json:"hunger" firestore:"hunger"`
-	Thirst     int    `json:"thirst" firestore:"thirst"`
-	Health     int    `json:"health" firestore:"health"`
-	EquippedId int    `json:"equipped_id" firestore:"equipped_id"`
-	Balance    int    `json:"balance" firestore:"balance"`
+	Ghost bool `json:"-" firestore:"ghost"`
+	// input-blocked => jogador não se move
+	InputBlocked bool   `json:"-"`
+	CurrentMap   string `json:"current_map" firestore:"current_map"`
+	X            int    `json:"x" firestore:"x"`
+	Y            int    `json:"y" firestore:"y"`
+	Energy       int    `json:"energy" firestore:"energy"`
+	Hunger       int    `json:"hunger" firestore:"hunger"`
+	Thirst       int    `json:"thirst" firestore:"thirst"`
+	Health       int    `json:"health" firestore:"health"`
+	EquippedId   int    `json:"equipped_id" firestore:"equipped_id"`
+	Balance      int    `json:"balance" firestore:"balance"`
 	// não são persistidos
 	DistanceWalked int `json:"-" firestore:"-"`
 }
@@ -100,6 +102,15 @@ func (s *PlayerStatus) IsGhost() bool {
 }
 func (s *PlayerStatus) BecomeGhost() {
 	s.Ghost = true
+}
+func (s *PlayerStatus) UnGhost() {
+	s.Ghost = false
+}
+func (s *PlayerStatus) BlockInput() {
+	s.InputBlocked = true
+}
+func (s *PlayerStatus) UnblockInput() {
+	s.InputBlocked = false
 }
 
 func (s *PlayerStatus) WriteToMessage(out *msg.Message) {

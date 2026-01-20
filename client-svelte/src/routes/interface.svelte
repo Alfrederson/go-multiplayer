@@ -37,6 +37,22 @@
             // @ts-ignore
             chat_message(event.detail)
         })
+        const original_log = console.log
+        const original_error = console.error
+
+        console.log = function(msg,params){
+            original_log(msg,params)
+            debug_message(msg)
+        }
+
+        console.error = function(msg,params){
+            original_error(msg,params)
+            debug_message("E:"+msg)
+        }
+        return ()=>{
+            console.log = original_log
+            console.error = original_error
+        }
     })
 
 </script>

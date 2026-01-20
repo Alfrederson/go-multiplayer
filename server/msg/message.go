@@ -38,6 +38,15 @@ const (
 	PLAYER_CHAT
 	// quando um jogador tenta usar um quadrado (usar um npc, minerar um quadrado, fazendar um quadrado, atacar um quadrado, etc...)
 	PLAYER_USE_TILE
+
+	// servidor manda mensagem (tipo rpg maker) para o jogador
+	EVENT_SERVER_MESSAGE
+	// jogador fecha a mensagem
+	EVENT_PLAYER_OK
+	// servidor pergunta alguma coisa
+	EVENT_SERVER_ASK
+	// jogador responde
+	EVENT_PLAYER_ANSWER
 )
 
 func bool_to_byte(val bool) byte {

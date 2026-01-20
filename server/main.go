@@ -4,6 +4,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/Alfrederson/backend_game/server"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -39,11 +41,11 @@ func main() {
 	})
 	r.Use(gin.Recovery())
 
-	server := Server{
+	sv := server.Server{
 		MaxPlayers: 100,
 	}
 
-	server.LoadMaps()
+	sv.LoadMaps()
 
 	r.Use(cors.Default())
 
@@ -55,9 +57,9 @@ func main() {
 	// })
 	r.Static("/maps", "../files/maps")
 
-	r.GET("/server", server.GetWSHandler())
+	r.GET("/server", sv.GetWSHandler())
 	r.GET("/server/status", func(ctx *gin.Context) {
-		ctx.JSON(200, server.Status())
+		ctx.JSON(200, sv.Status())
 	})
 
 	r.Static("/client", "../client/dist")

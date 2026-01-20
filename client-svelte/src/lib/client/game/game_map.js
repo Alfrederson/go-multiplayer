@@ -111,7 +111,9 @@ class GameMap {
         let thisTile = 0
         this.width = tiled["width"]
         this.height = tiled["height"]
-        this.layers = Array.from({length:3})
+        if(!this.layers){
+            this.layers = Array.from({length:3})
+        }
         this.sensors = []
         this.zones.clear()
 
@@ -160,10 +162,13 @@ class GameMap {
                 }break;
             }
         }
+
         for(let i = 0; i < 2; i++){
             if(!this.layers[i]){
+                console.log("[GameMap] creating new TileMap")
                 this.layers[i] = new TileMap(this.layers_raw[i])
             }else{
+                console.log("[GameMap] just updating tiles!")
                 this.layers[i].updateTiles( this.layers_raw[i])
             }
         }

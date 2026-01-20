@@ -50,7 +50,7 @@ class GameState {
         height : 0,
 
         cameraX : 0,
-        cameraY : 0,
+        cameraY : 0, 
 
         /** @type {IPosition} */
         target : {x:0,y:0}
@@ -77,7 +77,6 @@ class GameState {
     snapTo(x,y){
         this.screen.cameraX = x - this.screen.width/2 
         this.screen.cameraY = y - this.screen.height/2
-        this.constrainCamera()
     }
     /**
      * faz a camera olhar para uma posição
@@ -97,7 +96,6 @@ class GameState {
         }else{
             this.screen.cameraY += dy / 10
         }
-        this.constrainCamera()
     }
 
     tileMap = new GameMap()
@@ -176,11 +174,11 @@ class GameState {
             return
         }
 
+        this.constrainCamera()
         b.SetCamera(this.screen.cameraX|0, this.screen.cameraY|0)
         this.tileMap.render(b,this,0) 
         for (let i = 0; i < this._scene.top; i++) {
-            let obj = this._scene.at(i)
-            
+            let obj = this._scene.at(i)            
             obj.render && obj.render(b,this)
         }
         this.tileMap.render(b,this,1) 
@@ -197,7 +195,6 @@ class GameState {
     /** @type {import("./game/client/client.js").Client|undefined} */
     game_client
 
-    remove_handler
     /**
      * handler para quando o cliente estiver conectado
      * @param {import("./game/client/client.js").Client} client 
@@ -255,10 +252,6 @@ class GameState {
     }
 
     disconnected(){
-        if(this.remove_handler){
-            this.remove_handler()
-            this.remove_handler = undefined
-        }
         this._scene.reset()
         this._alives.reset()
         this._other_clients.clear()
@@ -487,6 +480,11 @@ class GameState {
                 chat_message(`player${from_player}:${text}`)
             }break;
         }
+    }
+
+    end(){
+        this.game_client?.disconnect()
+        console.log("ending session")
     }
 }
 

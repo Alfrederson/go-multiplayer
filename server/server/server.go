@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -68,14 +68,14 @@ func (s *Server) Status() ServerStatus {
 }
 
 func (s *Server) Send(to *Client, message byte, data ...[]byte) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	// s.mutex.Lock()
+	// defer s.mutex.Unlock()
 	wsutil.WriteServerBinary((*to).Connection, msg.ConstructMessage(message, data...))
 }
 
 func (s *Server) SendBytes(to *Client, data []byte) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	// s.mutex.Lock()
+	// defer s.mutex.Unlock()
 	wsutil.WriteServerBinary((*to).Connection, data)
 }
 

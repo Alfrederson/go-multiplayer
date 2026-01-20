@@ -84,12 +84,12 @@ function tile_buffer_from_array(array,tex_width,tex_height,tileset_cols){
           const tile_y = (tile / (tileset_cols))|0
 
           // r = offset x
-          buffer[cell] = (tile_x-1)*2 + sub_x
+          buffer[cell] = (tile_x-1)*2 + sub_x + (sub_x == sub_y ? Math.random() > 0.95 ? 1 : 0 : 0)
           // g = offset y
           buffer[cell+1] = tile_y*2 + sub_y
           // b = ?
           // a = alfa
-          buffer[cell+3] = sub_x == sub_y ? 255 : 125
+          buffer[cell+3] = 255
           //buffer[cell+2] = (x/width)*255
 
         }
@@ -101,22 +101,26 @@ function tile_buffer_from_array(array,tex_width,tex_height,tileset_cols){
 
 export class TileMap{
   tiles
-  texture
+  /** @type {WebGLTexture|null} */
+  texture = null
   width
   height
-  tileset_rows
-  tileset_cols
-  tile_width
-  tile_height
-  tex_width
-  tex_height
+  tileset_rows=0
+  tileset_cols=0
+  tile_width=0
+  tile_height=0
+  tex_width=0
+  tex_height=0
 
-  inverse_tile_width
-  inverse_tile_height
-  inverse_tileset_width
-  inverse_tileset_height
-  inverse_map_pixel_width
-  inverse_map_pixel_height
+  inverse_tile_width=0
+  inverse_tile_height=0
+  inverse_tileset_width=0
+  inverse_tileset_height=0
+  inverse_map_pixel_width=0
+  inverse_map_pixel_height=0
+
+  must_create_map_texture = true
+  must_update_map_texture = true
 
   /**
    * @param {number[][]} data 
@@ -127,8 +131,13 @@ export class TileMap{
     this.tiles = data.map( x => x.map( y => y) )
   }
 
+  /**
+   * @param {WebGLRenderingContext} ctx
+   * @param {Uint8Array<ArrayBuffer>} tile_buffer
+   * @param {number} tex_width
+   * @param {number} tex_height
+   */
   setTextureFromTileBuffer(ctx,tile_buffer,tex_width,tex_height){
-    this.texture = ctx.createTexture()
     ctx.bindTexture(ctx.TEXTURE_2D,this.texture)
     ctx.texParameteri(ctx.TEXTURE_2D,ctx.TEXTURE_WRAP_S,ctx.CLAMP_TO_EDGE)
     ctx.texParameteri(ctx.TEXTURE_2D,ctx.TEXTURE_WRAP_T,ctx.CLAMP_TO_EDGE)
@@ -146,15 +155,20 @@ export class TileMap{
       tile_buffer
     )
   }
-  updateTextureFromTileBuffer(ctx,tile_buffer,tex_width,tex_height){    
-  }
+
   /**
    * 
    * @param {WebGLRenderingContext} ctx 
    * @param {import("../image").WGLImage} tileset 
    */
   createTexture(ctx,tileset){
-    console.info("creating texture for ",tileset.name)
+    if(this.must_create_map_texture){
+      // já tem textura = tem que deletar a antiga
+      if(this.texture !== null){
+        ctx.deleteTexture(this.texture)
+      }
+      this.texture = ctx.createTexture()
+    }
     this.inverse_tileset_width = 1/tileset.width
     this.inverse_tileset_height = 1/tileset.height
     this.tile_width = tileset.frameWidth
@@ -178,14 +192,33 @@ export class TileMap{
     const buffer = tile_buffer_from_array(this.tiles,this.tex_width,this.tex_height,this.tileset_cols)
     this.setTextureFromTileBuffer(ctx,buffer,this.tex_width,this.tex_height)
 
+    this.must_create_map_texture=false
+    this.must_update_map_texture=false
     Unload(()=>{
       console.info("[TileMap] deleting tile offset texture")
       ctx.deleteTexture(this.texture)
     })
   }
 
+  /**
+   * @param {number[][]} new_tiles
+   */
   updateTiles(new_tiles){
+    const old_width = this.width
+    const old_height = this.height
 
+    this.height = new_tiles.length
+    this.width = new_tiles[0].length
+    this.tiles = new_tiles.map( x => x.map( y => y) )
+    // tamanho do mapa mudou = tem que recriar a textura
+    if(old_width !== this.width || old_height !== this.height){
+      this.must_create_map_texture = true
+    }
+    this.must_update_map_texture = true
+  }
+  
+  hasMapTexture(){
+    return  this.texture !== null && !(this.must_create_map_texture || this.must_update_map_texture)
   }
 }
 
@@ -203,13 +236,12 @@ export class TileMapDrawer{
    * @param {number} screen_height 
    */
   constructor(ctx,screen_width,screen_height){
-    console.info("[TileMapDrawer] creating")
     this.screen_width = screen_width
     this.screen_height = screen_height
 
     this.shader = initShaderProgram(ctx,vs_source,fs_source)
-    const al = name => ctx.getAttribLocation(this.shader,name)
-    const ul = name => ctx.getUniformLocation(this.shader,name)
+    const al = (/** @type {string} */ name) => ctx.getAttribLocation(this.shader,name)
+    const ul = (/** @type {string} */ name) => ctx.getUniformLocation(this.shader,name)
 
     this.program_info = {
       a: {
@@ -256,7 +288,7 @@ export class TileMapDrawer{
    * @param {number} y 
    */
   drawTilemap(ctx,tilemap,tileset,x,y){
-    if(!tilemap.texture){
+    if(!tilemap.hasMapTexture()){
       tilemap.createTexture(ctx,tileset)
     }
     if(!tileset.texture){
@@ -295,7 +327,10 @@ export class TileMapDrawer{
     ctx.uniform1i(this.program_info.u.tiles,1)
 
     // passa os uniformes para o shader vestir
-    ctx.uniform1i(this.program_info.u.texture,0)
+
+    // WTF: de onde veio esse u.texture?????
+    // acho que era um esquema para poder ter várias camadas ou frames
+    // ctx.uniform1i(this.program_info.u.texture,0)
     
     // desenha
     ctx.drawArrays(ctx.TRIANGLES,0,6)

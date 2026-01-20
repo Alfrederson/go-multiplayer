@@ -8,18 +8,11 @@ import { constrain } from "../util.js";
 import { player_store } from "./player.store.js";
 
 
-/**
- * @type {import("../../blitz/blitz.js").IImage}
- */
+/** @type {import("../../blitz/blitz.js").IImage} */
 let anonimo
-
-/** @type {Map<string,import("../../blitz/blitz.js").IImage>} */
-const sprite_map = new Map()
 
 Preload( async b =>{
     anonimo = await b.LoadAnimImage("char.png",24,32)
-
-    // carregar vários tipos de sprite...
 })
 
 const FRAME_WIDTH = 24
@@ -33,8 +26,6 @@ export const DIR_UP = 0
 export const DIR_RIGHT = 1
 export const DIR_DOWN = 2
 export const DIR_LEFT = 3
-
-
 
 class Player {    
     x = 128
