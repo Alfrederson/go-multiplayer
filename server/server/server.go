@@ -22,6 +22,17 @@ type Client struct {
 	Connection net.Conn
 	Active     bool
 	Link       *pecas.Link[Client]
+	ByteSink   chan []byte
+}
+
+func (c *Client) Close() {
+	close(c.ByteSink)
+
+	for range (c).ByteSink {
+		// esvaziando canal
+	}
+
+	c.Connection.Close()
 }
 
 // um mapa tem:
@@ -67,16 +78,28 @@ func (s *Server) Status() ServerStatus {
 	}
 }
 
-func (s *Server) Send(to *Client, message byte, data ...[]byte) {
-	// s.mutex.Lock()
-	// defer s.mutex.Unlock()
-	wsutil.WriteServerBinary((*to).Connection, msg.ConstructMessage(message, data...))
+func (s *Server) SendMessage(to *Client, message byte, data ...[]byte) {
+	select {
+	case to.ByteSink <- msg.ConstructMessage(message, data...):
+		// ok
+		return
+	default:
+		log.Println("[WARN] writing to closed channel ", to.Id)
+	}
 }
 
 func (s *Server) SendBytes(to *Client, data []byte) {
-	// s.mutex.Lock()
-	// defer s.mutex.Unlock()
-	wsutil.WriteServerBinary((*to).Connection, data)
+	select {
+	case to.ByteSink <- data:
+		// ok
+		return
+	default:
+		log.Println("[WARN] writing to closed channel", to.Id)
+	}
+}
+
+func (s *Server) WsWriteBytes(to *Client, bytes []byte) error {
+	return wsutil.WriteServerBinary(to.Connection, bytes)
 }
 
 func (s *Server) ChangeClientRoom(client *Client, to_room string) {
@@ -107,11 +130,14 @@ func (s *Server) MapcastBytes(mapname string, from *Client, x int, y int, data [
 		}
 		if ((from != nil && (c.Connection != from.Connection)) || from == nil) && c.Active {
 			// não repassa para quem estiver longe...
+			// TODO: fazer isso baseado no tamanho da célula do mapa (ex: 16x16 tiles, etc)
 			if int_abs(x-c.Status.X) > 320 ||
 				int_abs(y-c.Status.Y) > 320 {
 				return
 			}
-			wsutil.WriteServerBinary((*c).Connection, data)
+			s.SendBytes(c, data)
+			//(*c).ByteSink <- data
+			// wsutil.WriteServerBinary((*c).Connection, data)
 		}
 	})
 }
@@ -132,7 +158,9 @@ func (s *Server) Mapcast(mapname string, from *Client, x int, y int, message byt
 				int_abs(y-c.Status.Y) > 320 {
 				return
 			}
-			wsutil.WriteServerBinary((*c).Connection, byte_message)
+			s.SendBytes(c, byte_message)
+			//(*c).ByteSink <- byte_message
+			// wsutil.WriteServerBinary((*c).Connection, byte_message)
 		}
 	})
 }
@@ -148,7 +176,8 @@ func (s *Server) Broadcast(from *Client, message byte, data ...[]byte) {
 		}
 		this_map.ActiveClients.ForEach(func(c *Client) {
 			if ((from != nil && ((*c).Connection != (*from).Connection)) || from == nil) && (*c).Active {
-				wsutil.WriteServerBinary((*c).Connection, new_msg)
+				(*c).ByteSink <- new_msg
+				// wsutil.WriteServerBinary((*c).Connection, new_msg)
 			}
 		})
 	}
@@ -229,7 +258,8 @@ func (s *Server) GetWSHandler() func(c *gin.Context) {
 					ItemIds:      make([]entities.ItemId, 0),
 				},
 			},
-			Link: link,
+			Link:     link,
+			ByteSink: make(chan []byte),
 		}
 
 		// Se esse Load() falhar (porque a pessoa nunca jogou), então prevalecem as configurações iniciais do jogador

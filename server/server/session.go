@@ -142,18 +142,37 @@ func (s *Server) StartSession(client *Client) {
 
 	// começa o ticker
 	ticker := time.NewTicker(time.Second)
+	stop_ticker := make(chan bool)
 	jogador_saiu := make(chan bool)
+
 	go func() {
+		defer log.Println("stopping heartbeat")
 		for {
 			select {
-			case <-jogador_saiu:
+			case <-stop_ticker:
 				return
 			case <-ticker.C:
 				client.Player.Status.TickVitals()
 				msg_status := msg.Message{}
 				msg_status.PutUint8(msg.SERVER_PLAYER_VITAL)
 				client.Player.Status.WriteVitalToMessage(&msg_status)
+				log.Printf("heart beat...")
 				s.SendBytes(client, msg_status.Bytes())
+			}
+		}
+	}()
+
+	go func() {
+		defer log.Println("parando o loop de envio")
+		for {
+			select {
+			case <-jogador_saiu:
+				return
+			case bytes := <-client.ByteSink:
+				err := s.WsWriteBytes(client, bytes)
+				if err != nil {
+					log.Printf("deu ruim: %v", err)
+				}
 			}
 		}
 	}()
@@ -162,6 +181,7 @@ func (s *Server) StartSession(client *Client) {
 		// desliga o ticker do jogador
 		ticker.Stop()
 		jogador_saiu <- true
+		stop_ticker <- true
 
 		// notifica os outros jogadores de que este aqui saiu
 		if !client.Status.IsGhost() {
@@ -176,8 +196,8 @@ func (s *Server) StartSession(client *Client) {
 			delete(s.player_by_id, client.Id)
 		}
 
-		// fecha a conexão
-		(*client).Connection.Close()
+		// fecha a conexão, etc
+		client.Close()
 
 		// tira o cliente do mapa em que ele está
 		s.RecycleClient(client)
@@ -197,7 +217,7 @@ func (s *Server) StartSession(client *Client) {
 	s.maps[client.Status.CurrentMap].ActiveClients.AddLink(client.Link)
 
 	// diz par ao jogador qual é o ID dele
-	s.Send(client, msg.SERVER_SETID, id_bytes)
+	s.SendMessage(client, msg.SERVER_SETID, id_bytes)
 	// TODO: diz para o jogador quem são os outros jogadores que estão lá
 	// (esse é difícil)
 
