@@ -30,6 +30,7 @@ func (c *Client) Close() {
 
 	for range (c).ByteSink {
 		// esvaziando canal
+		log.Println("esvazia")
 	}
 
 	c.Connection.Close()
