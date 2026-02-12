@@ -3,38 +3,14 @@ package server
 import (
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"sync"
 
+	"github.com/Alfrederson/backend_game/autotilemap"
 	"github.com/Alfrederson/backend_game/entities"
-	"github.com/Alfrederson/backend_game/fb"
 	"github.com/Alfrederson/backend_game/msg"
 	"github.com/Alfrederson/backend_game/pecas"
-	"github.com/gin-gonic/gin"
-	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 )
-
-type Client struct {
-	entities.Player
-	Spot       int
-	Connection net.Conn
-	Active     bool
-	Link       *pecas.Link[Client]
-	ByteSink   chan []byte
-}
-
-func (c *Client) Close() {
-	close(c.ByteSink)
-
-	for range (c).ByteSink {
-		// esvaziando canal
-		log.Println("esvazia")
-	}
-
-	c.Connection.Close()
-}
 
 // um mapa tem:
 //   - nome
@@ -43,10 +19,7 @@ func (c *Client) Close() {
 //   - quando uma mensagem é publicada, ela é enviada
 //   - a todas as células próximas à célula de origem
 
-type ServerMap struct {
-	entities.GameMap
-	ActiveClients pecas.List[Client]
-}
+type MessageHandler func(RemoteMessageContext)
 
 type Server struct {
 	TotalPlayers int
@@ -54,11 +27,39 @@ type Server struct {
 
 	mutex sync.Mutex
 
+	// índices, caches gerais, etc.
 	player_by_id map[string]*entities.Player
-	maps         map[string]*ServerMap
+	tilesets     map[string]*autotilemap.Tileset
+
+	// eu tenho SALAS, não tenho mapas
+	maps map[string]*Room
 
 	free_spots   pecas.Stack[int]
 	free_clients pecas.List[Client]
+
+	message_handlers []MessageHandler
+}
+
+func (s *Server) SetMessageHandler(msg_byte int, handler MessageHandler) {
+	if s.message_handlers == nil {
+		s.message_handlers = make([]MessageHandler, msg_byte+1)
+	} else {
+		// array é melhor que map......
+		for {
+			current_size := len(s.message_handlers)
+			if msg_byte >= current_size {
+				current_size *= 2
+				new_slice := make([]MessageHandler, current_size)
+				copy(new_slice, s.message_handlers)
+				s.message_handlers = new_slice
+				log.Println("current size is now ", current_size)
+			} else {
+				break
+			}
+		}
+	}
+	log.Println("setting handler for message ", msg_byte)
+	s.message_handlers[msg_byte] = handler
 }
 
 type ServerStatus struct {
@@ -76,26 +77,6 @@ func (s *Server) Status() ServerStatus {
 		TotalPlayers: s.MaxPlayers - s.free_clients.Size(),
 		FreeSpots:    s.free_clients.Size(),
 		Population:   population,
-	}
-}
-
-func (s *Server) SendMessage(to *Client, message byte, data ...[]byte) {
-	select {
-	case to.ByteSink <- msg.ConstructMessage(message, data...):
-		// ok
-		return
-	default:
-		log.Println("[WARN] writing to closed channel ", to.Id)
-	}
-}
-
-func (s *Server) SendBytes(to *Client, data []byte) {
-	select {
-	case to.ByteSink <- data:
-		// ok
-		return
-	default:
-		log.Println("[WARN] writing to closed channel", to.Id)
 	}
 }
 
@@ -136,9 +117,7 @@ func (s *Server) MapcastBytes(mapname string, from *Client, x int, y int, data [
 				int_abs(y-c.Status.Y) > 320 {
 				return
 			}
-			s.SendBytes(c, data)
-			//(*c).ByteSink <- data
-			// wsutil.WriteServerBinary((*c).Connection, data)
+			c.SendBytes(data)
 		}
 	})
 }
@@ -147,7 +126,7 @@ func (s *Server) MapcastBytes(mapname string, from *Client, x int, y int, data [
 func (s *Server) Mapcast(mapname string, from *Client, x int, y int, message byte, data ...[]byte) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	byte_message := msg.ConstructMessage(message, data...)
+	byte_message := msg.ConstructByteBuffer(message, data...)
 	s.maps[mapname].ActiveClients.ForEach(func(c *Client) {
 		if c.Status.CurrentMap != mapname {
 			fmt.Printf(" EEEPA! mensagem para %s chegando em %s!\n", mapname, c.Status.CurrentMap)
@@ -159,18 +138,17 @@ func (s *Server) Mapcast(mapname string, from *Client, x int, y int, message byt
 				int_abs(y-c.Status.Y) > 320 {
 				return
 			}
-			s.SendBytes(c, byte_message)
-			//(*c).ByteSink <- byte_message
-			// wsutil.WriteServerBinary((*c).Connection, byte_message)
+			c.SendBytes(byte_message)
 		}
 	})
 }
 
 // Envia uma mensagem a todos os clientes conectados em todos os mapas
 func (s *Server) Broadcast(from *Client, message byte, data ...[]byte) {
+	// talvez não precise disso aqui se o processo de tirar o cliente da sala e botar em outra for sincronizado...
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	new_msg := msg.ConstructMessage(message, data...)
+	new_msg := msg.ConstructByteBuffer(message, data...)
 	for _, this_map := range s.maps {
 		if this_map.ActiveClients.Size() == 0 {
 			continue
@@ -178,98 +156,7 @@ func (s *Server) Broadcast(from *Client, message byte, data ...[]byte) {
 		this_map.ActiveClients.ForEach(func(c *Client) {
 			if ((from != nil && ((*c).Connection != (*from).Connection)) || from == nil) && (*c).Active {
 				(*c).ByteSink <- new_msg
-				// wsutil.WriteServerBinary((*c).Connection, new_msg)
 			}
 		})
-	}
-}
-
-// 2- O servidor aceita conexões de websocket
-func (s *Server) GetWSHandler() func(c *gin.Context) {
-
-	s.player_by_id = make(map[string]*entities.Player)
-	s.free_clients = pecas.NewList[Client]()
-	s.free_spots = pecas.NewStack[int](s.MaxPlayers)
-
-	// na hora que eu fiz isso a ideia era ter um pool
-	// de clientes em branco para ficar reusando sem
-	// alocar/realocar o struct do Client em si
-	for i := 0; i < s.MaxPlayers; i++ {
-		s.free_clients.AddLink(
-			pecas.NewLink[Client](&Client{}),
-		)
-		s.free_spots.Push(i)
-	}
-
-	return func(c *gin.Context) {
-		player_id := "ghost"
-		token := c.Query("token")
-
-		fb_token, err := fb.ValidarToken(token)
-		if err != nil {
-			log.Printf("validação do token falhou: %v\n", err)
-		} else {
-			player_id = fb_token.UID
-		}
-
-		log.Printf("(%.6s) tentando entrar\n", player_id)
-		conn, _, _, err := ws.UpgradeHTTP(c.Request, c.Writer)
-		if err != nil {
-			log.Println("não consegui fazer o upgrade da conexão: ", err)
-			return
-		}
-
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
-
-		link, error := s.free_clients.TakeLink()
-		log.Printf("agora tem %d clientes disponíveis", s.free_clients.Size())
-		if error != nil {
-			log.Println(error)
-			c.JSON(http.StatusInternalServerError, "server is full")
-			return
-		}
-		id, _ := s.free_spots.Pop()
-
-		/*
-					          _ valor _
-			                 |         v
-						[ link ]  [client]
-			                 ^          |
-							 |___ link _|
-		*/
-
-		// todo: a gente vai tirar o ID do jogador de dentro do usuário autenticado
-		//       e carregar as coisas dele
-		*link.Value = Client{
-			Active:     true,
-			Connection: conn,
-			Spot:       id,
-			Player: entities.Player{
-				Id: player_id,
-				Status: entities.PlayerStatus{
-					CurrentMap: "cidade",
-					X:          512,
-					Y:          262,
-				},
-				Bag: entities.Bag{
-					MaxItemCount: 10,
-					MaxWeight:    15000,
-					Items:        make([]entities.Item, 0),
-					ItemIds:      make([]entities.ItemId, 0),
-				},
-			},
-			Link:     link,
-			ByteSink: make(chan []byte),
-		}
-
-		// Se esse Load() falhar (porque a pessoa nunca jogou), então prevalecem as configurações iniciais do jogador
-		// i.e: surge no lobby, sem dinheiro, com uma mochila que comporta 10 coisas ou 15kg
-		if p := &link.Value.Player; p.Id == "ghost" {
-			p.Status.BecomeGhost()
-		} else {
-			p.Load()
-		}
-		go s.StartSession(link.Value)
 	}
 }

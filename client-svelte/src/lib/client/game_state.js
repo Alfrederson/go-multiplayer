@@ -86,15 +86,15 @@ class GameState {
     lookAt(x,y){
         let dx = x - this.screen.cameraX - this.screen.width/2
         let dy = y - this.screen.cameraY - this.screen.height/2
-        if (Math.abs(dx) <= 1){
+        if (Math.abs(dx) <= 0.5){
             this.screen.cameraX = x - this.screen.width/2
         }else{
-            this.screen.cameraX += dx / 10
+            this.screen.cameraX += dx / 8
         }
-        if (Math.abs(dy) <= 1){
+        if (Math.abs(dy) <= 0.5){
             this.screen.cameraY = y - this.screen.height/2
         }else{
-            this.screen.cameraY += dy / 10
+            this.screen.cameraY += dy / 8
         }
     }
 
@@ -136,9 +136,6 @@ class GameState {
      * @param {number} deltaTime 
      */
     update(deltaTime) {
-        if(this.screen.target){
-            this.lookAt(this.screen.target.x, this.screen.target.y)
-        }
 
         // loop through all the objects in the scene stack updating them
         for (let i = 0; i < this._scene.top; i++) {
@@ -154,6 +151,10 @@ class GameState {
             } else {
                 this._scene.forget(i)
             }
+        }
+
+        if(this.screen.target){
+            this.snapTo(this.screen.target.x, this.screen.target.y)
         }
 
         // troca as pilhas
@@ -175,7 +176,7 @@ class GameState {
         }
 
         this.constrainCamera()
-        b.SetCamera(this.screen.cameraX|0, this.screen.cameraY|0)
+        b.SetCamera(this.screen.cameraX, this.screen.cameraY)
         this.tileMap.render(b,this,0) 
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)            

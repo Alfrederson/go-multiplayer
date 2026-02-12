@@ -6,9 +6,13 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Alfrederson/backend_game/fb"
+	fb "github.com/Alfrederson/backend_game/firebase"
 	"github.com/Alfrederson/backend_game/msg"
 )
+
+type Ticker interface {
+	Tick()
+}
 
 type ItemId string
 
@@ -82,7 +86,8 @@ type PlayerStatus struct {
 	DistanceWalked int `json:"-" firestore:"-"`
 }
 
-func (s *PlayerStatus) TickVitals() {
+func (s *PlayerStatus) Tick() {
+	// sinais vitais
 	s.Hunger = min(100, s.Hunger+3)
 	s.Thirst = min(100, s.Thirst+1)
 	s.Energy = max(0, s.Energy-s.DistanceWalked/10)
@@ -97,6 +102,7 @@ func (s *PlayerStatus) TickVitals() {
 		s.Health = max(0, s.Health-1)
 	}
 }
+
 func (s *PlayerStatus) IsGhost() bool {
 	return s.Ghost
 }
@@ -154,6 +160,10 @@ type Player struct {
 
 	// quais itens o jogador tem
 	Bag Bag `json:"bag" firestore:"bag"`
+}
+
+func (p *Player) Tick() {
+	p.Status.Tick()
 }
 
 func (p *Player) WriteToMessage(out *msg.Message) {

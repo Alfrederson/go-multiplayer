@@ -266,8 +266,8 @@ class WGL_B2D {
         this.imageBuddy?.drawImage(
             this.ctx,
             imageHandler,
-            x- this.camX,
-            y- this.camY
+            (x- this.camX),
+            (y- this.camY)
         )
     }
     /**
@@ -280,8 +280,8 @@ class WGL_B2D {
         this.imageBuddy?.drawImageFrame(
             this.ctx,
             imageHandler,
-            x-this.camX,
-            y-this.camY,
+            (x-this.camX),
+            (y-this.camY),
             frame
         )
     }

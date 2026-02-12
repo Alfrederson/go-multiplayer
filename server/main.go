@@ -45,7 +45,9 @@ func main() {
 		MaxPlayers: 100,
 	}
 
-	sv.LoadMaps()
+	sv.AddMessageHandlers()
+	sv.LoadTilesets()
+	sv.LoadRooms()
 
 	r.Use(cors.Default())
 

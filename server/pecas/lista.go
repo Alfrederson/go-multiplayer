@@ -1,6 +1,9 @@
 package pecas
 
-import "errors"
+import (
+	"errors"
+	"log"
+)
 
 // uma lista de PONTEIROS
 // não tentar usar para colocar "valores primitivos" porque não vai dar certo
@@ -36,6 +39,14 @@ func (l *Link[T]) RemoveFromList() error {
 type List[T any] struct {
 	head, tail *Link[T]
 	size       int
+}
+
+// adiciona um novo item à lista retornando o link dela
+func (l *List[T]) Add(param *T) *Link[T] {
+	log.Println("adicionando item na lista")
+	new_link := NewLink(param)
+	l.AddLink(new_link)
+	return new_link
 }
 
 func (l *List[T]) Size() int {
@@ -106,6 +117,14 @@ func (l *List[T]) TakeLink() (*Link[T], error) {
 
 func (l *List[T]) First() *Link[T] {
 	return l.head
+}
+
+func (l *List[T]) FirstItem() *T {
+	link := l.head
+	if link == nil {
+		return nil
+	}
+	return link.Value
 }
 
 func (l *List[T]) ForEach(f func(*T)) {

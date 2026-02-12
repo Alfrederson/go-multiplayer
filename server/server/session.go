@@ -18,99 +18,76 @@ type RemoteMessageContext struct {
 // envia mensagem do servidor direto para o jogador
 func msg_server_direct_message(s *Server, c *Client, m string) {
 	message := msg.Message{}
-	message.PutUint8(msg.PLAYER_CHAT)
-	message.PutInt16(0)
+	message.PutUint8(msg.PLAYER_CHAT).PutInt16(0)
 	message.PutShortString(m)
-	s.SendBytes(c, message.Bytes())
+	c.SendBytes(message.Bytes())
 }
 
-// interpreta mensagem player status enviada pelo jogador
-func msg_player_status(s *Server, c *Client, m *msg.Message) {
-	// tamanho fixo é mais fácil de fazer isso.
-	if m.Length() < 7 {
-		return
-	}
-	x := c.Player.Status.X
-	y := c.Player.Status.Y
-
-	c.Player.Status.X = m.TakeInt16()
-	c.Player.Status.Y = m.TakeInt16()
-
-	c.Player.Status.DistanceWalked += int_abs(x-c.Player.Status.X) + int_abs(y-c.Player.Status.Y)
-	//TODO: cansar o jogador com base na distância que foi percorrida.
-
-	// a gente vai ter um sistema de células
-	// se a pessoa se move, só quem está na mesma célula
-	// que a pessoa está vai ver a pessoa
-	// quando a pessoa sai de uma célula para a outra, o servidor
-	// manda a mensagem que indica quem está
-	// naquela célula
-	// a gente também vai usar os portais definidos no mapa
-	// pra decidir para qual outro mapa a pessoa teletransporta
-	s.Mapcast(c.Status.CurrentMap, c, c.Status.X, c.Status.Y, m.MessageByte(), m.PayloadBytes())
-}
-
-func msg_player_chat(s *Server, c *Client, m *msg.Message) {
-	chat, err := m.TakeShortString()
-	if err != nil {
-		log.Println("msg_player_chat: ", err)
-		return
-	}
-	fmt.Printf("%d > %s\n", c.Spot, chat)
-	s.Mapcast(c.Status.CurrentMap, nil, c.Status.X, c.Status.Y, m.MessageByte(), m.PayloadBytes())
-}
-
-func msg_player_enter_map(s *Server, c *Client, m *msg.Message) {
-	map_name, err := m.TakeShortString()
+func msg_player_enter_map(ctx RemoteMessageContext) {
+	map_name, err := ctx.Message.TakeShortString()
 	if err != nil {
 		log.Println("lendo o mapa:", err)
 		return
 	}
-	target_zone, err := m.TakeShortString()
+	target_zone, err := ctx.Message.TakeShortString()
 	if err != nil {
 		log.Println("lendo a zona:", err)
 		return
 	}
 	// TODO: decidir o que fazer quando a pessoa estiver entrando em uma casa
-	mapa, existe := s.maps[map_name]
+	room, existe := ctx.Server.maps[map_name]
 	if !existe {
-		fmt.Printf("jogador tentando ir para mapa inexistente %s \n", map_name)
+		fmt.Printf("jogador tentando ir para sala inexistente %s \n", map_name)
 		return
 	}
-	portal, existe := mapa.Zones[target_zone]
+	log.Println(map_name, room)
+
+	// Não é para a sala não ter um mapa, hein!
+	next_map := room.Maps.FirstItem()
+	if next_map == nil {
+		fmt.Printf("sala não tem mapa!")
+		return
+	}
+
+	portal, existe := next_map.Zones[target_zone]
 	if !existe {
 		fmt.Printf("jogador tentando ir para portal inexistente %s \n", target_zone)
 		return
 	}
-	old_map := c.Status.CurrentMap
-	x, y := portal.PickPointForRect(14, 14)
-	log.Printf("(%.6s) => %s.%s (%d,%d)", c.Player.Id, map_name, target_zone, x, y)
 
-	if !c.Status.IsGhost() {
-		s.MapcastBytes(
+	old_map := ctx.Client.Status.CurrentMap
+	x, y := portal.PickPointForRect(14, 14)
+	log.Printf("(%.6s) => %s.%s (%d,%d)", ctx.Client.Player.Id, map_name, target_zone, x, y)
+
+	if !ctx.Client.Status.IsGhost() {
+		ctx.Server.MapcastBytes(
 			old_map,
-			c,
-			c.Status.X,
-			c.Status.Y,
-			msg.ConstructMessage(msg.SERVER_PLAYER_EXITED, msg.I16(c.Spot)),
+			ctx.Client,
+			ctx.Client.Status.X,
+			ctx.Client.Status.Y,
+			msg.ConstructByteBuffer(msg.SERVER_PLAYER_EXITED, msg.U16(ctx.Client.Spot)),
 		)
 	}
 
-	s.ChangeClientRoom(c, map_name)
-	s.SendBytes(c,
-		msg.ConstructMessage(msg.SERVER_PLAYER_SET_MAP, msg.StrToByteArray(map_name), msg.I16(x), msg.I16(y)),
+	ctx.Server.ChangeClientRoom(ctx.Client, map_name)
+	ctx.Client.SendBytes(
+		msg.ConstructByteBuffer(msg.SERVER_PLAYER_SET_MAP, msg.StrToByteArray(map_name), msg.U16(x), msg.U16(y)),
 	)
+	// REMOVER
+	// ctx.Server.SendBytes(ctx.Client,
+	// 	msg.ConstructByteBuffer(msg.SERVER_PLAYER_SET_MAP, msg.StrToByteArray(map_name), msg.U16(x), msg.U16(y)),
+	// )
 }
 
 // isso vai ser chamado pela VM.
 // func event_server_ask(s *Server, c *Client) {
 // }
 
-func msg_event_player_ok(s *Server, c *Client, m *msg.Message) {
+func msg_event_player_ok(ctx RemoteMessageContext) {
 	// o que eu faço com a mensagem agora?
 	// a gente não manda nenhuma mensagem pro jogador confirmando
 	// então a gente torce para a pessoa não ter modificado o cliente
-	c.Player.Status.UnblockInput()
+	ctx.Player.Status.UnblockInput()
 }
 
 // aqui a gente tem que mandar uma mensagem para um canal
@@ -136,7 +113,7 @@ func (s *Server) RecycleClient(client *Client) {
 }
 
 func (s *Server) StartSession(client *Client) {
-	id_bytes := msg.I16(client.Spot)
+	id_bytes := msg.U16(client.Spot)
 
 	log.Printf("cliente pegou o spot %d", client.Spot)
 
@@ -145,23 +122,21 @@ func (s *Server) StartSession(client *Client) {
 	stop_ticker := make(chan bool)
 	jogador_saiu := make(chan bool)
 
+	// corotina de ticker do jogador (fome, sede, etc) que é parada quando ele sai.
 	go func() {
 		defer log.Println("stopping heartbeat")
 		for {
 			select {
 			case <-stop_ticker:
 				return
+			// a gente faz assim? ou faz o ticker tickar para cada sala ao invés disso?
 			case <-ticker.C:
-				client.Player.Status.TickVitals()
-				msg_status := msg.Message{}
-				msg_status.PutUint8(msg.SERVER_PLAYER_VITAL)
-				client.Player.Status.WriteVitalToMessage(&msg_status)
-				log.Printf("heart beat...")
-				s.SendBytes(client, msg_status.Bytes())
+				client.Tick()
 			}
 		}
 	}()
 
+	// corrotina de envio
 	go func() {
 		defer log.Println("parando o loop de envio")
 		for {
@@ -217,15 +192,15 @@ func (s *Server) StartSession(client *Client) {
 	s.maps[client.Status.CurrentMap].ActiveClients.AddLink(client.Link)
 
 	// diz par ao jogador qual é o ID dele
-	s.SendMessage(client, msg.SERVER_SETID, id_bytes)
+	client.SendBytes(msg.ConstructByteBuffer(msg.SERVER_SETID, id_bytes))
 	// TODO: diz para o jogador quem são os outros jogadores que estão lá
 	// (esse é difícil)
 
 	// Envia o estado completo do jogador
-	msg_status := msg.Message{}
+	msg_status := msg.New()
 	msg_status.PutUint8(msg.SERVER_PLAYER_FULL_STATUS)
-	client.Player.WriteToMessage(&msg_status)
-	s.SendBytes(client, msg_status.Bytes())
+	client.Player.WriteToMessage(msg_status)
+	client.SendMessage(*msg_status)
 
 	// manda o jogador entrar em um mapa
 	// msg_setmap := msg.Message{}
@@ -246,7 +221,6 @@ func (s *Server) StartSession(client *Client) {
 			log.Println("erro de leitura ", op, err)
 			break
 		}
-
 		// descarta a mensagem se for menor do que a mínima
 		if len(received_msg) < 3 {
 			continue
@@ -273,27 +247,14 @@ func (s *Server) StartSession(client *Client) {
 		message.Skip(2) // bytes do ID
 
 		ctx := RemoteMessageContext{Server: s, Client: client, Message: message}
-
-		switch msg_byte {
-		case msg.PLAYER_STATUS:
-			if client.Status.IsGhost() {
-				continue
-			}
-			msg_player_status(s, client, message)
-		case msg.PLAYER_CHAT:
-			if client.Status.IsGhost() {
-				continue
-			}
-			msg_player_chat(s, client, message)
-		// na verdade isso vai ser uma mensagem "PLAYER_USE_PORTAL"
-		// e eu vou checar se o jogador está mesmo perto do portal
-		case msg.PLAYER_ENTER_MAP:
-			msg_player_enter_map(s, client, message)
-		case msg.EVENT_PLAYER_ANSWER:
-			msg_event_player_answer(ctx)
-		case msg.EVENT_PLAYER_OK:
-			msg_event_player_ok(s, client, message)
+		if msg_byte <= 0 || msg_byte >= len(s.message_handlers) {
+			continue
 		}
+		handler := s.message_handlers[msg_byte]
+		if handler == nil {
+			continue
+		}
+		handler(ctx)
 	}
 }
 
