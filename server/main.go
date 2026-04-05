@@ -58,6 +58,8 @@ func main() {
 	// })
 	r.Static("/maps", "../files/maps")
 
+	r.Static("/autotilemaps", "../files/autotilemaps")
+
 	r.GET("/server", sv.GetWSHandler())
 	r.GET("/server/status", func(ctx *gin.Context) {
 		ctx.JSON(200, sv.Status())
