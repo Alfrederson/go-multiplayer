@@ -41,13 +41,12 @@ func main() {
 	})
 	r.Use(gin.Recovery())
 
-	sv := server.Server{
-		MaxPlayers: 100,
-	}
+	sv := server.NewServer()
 
 	sv.AddMessageHandlers()
 	sv.LoadTilesets()
 	sv.LoadRooms()
+	sv.StartTickers()
 
 	r.Use(cors.Default())
 

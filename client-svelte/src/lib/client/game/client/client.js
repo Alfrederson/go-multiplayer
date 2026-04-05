@@ -145,6 +145,7 @@ export class Client {
      */
     connect(url, {listener,connected,disconnected,error}, token){
         this.#myClientId = -1
+        console.log("conetando...")
         
         this.#listener = listener
         const socket = new WebSocket(SERVER_URL+"?token="+token)

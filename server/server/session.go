@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -17,71 +16,11 @@ type RemoteMessageContext struct {
 
 // envia mensagem do servidor direto para o jogador
 func msg_server_direct_message(s *Server, c *Client, m string) {
-	message := msg.Message{}
+	message := msg.New()
 	message.PutUint8(msg.PLAYER_CHAT).PutInt16(0)
 	message.PutShortString(m)
 	c.SendBytes(message.Bytes())
 }
-
-func msg_player_enter_map(ctx RemoteMessageContext) {
-	map_name, err := ctx.Message.TakeShortString()
-	if err != nil {
-		log.Println("lendo o mapa:", err)
-		return
-	}
-	target_zone, err := ctx.Message.TakeShortString()
-	if err != nil {
-		log.Println("lendo a zona:", err)
-		return
-	}
-	// TODO: decidir o que fazer quando a pessoa estiver entrando em uma casa
-	room, existe := ctx.Server.maps[map_name]
-	if !existe {
-		fmt.Printf("jogador tentando ir para sala inexistente %s \n", map_name)
-		return
-	}
-	log.Println(map_name, room)
-
-	// Não é para a sala não ter um mapa, hein!
-	next_map := room.Maps.FirstItem()
-	if next_map == nil {
-		fmt.Printf("sala não tem mapa!")
-		return
-	}
-
-	portal, existe := next_map.Zones[target_zone]
-	if !existe {
-		fmt.Printf("jogador tentando ir para portal inexistente %s \n", target_zone)
-		return
-	}
-
-	old_map := ctx.Client.Status.CurrentMap
-	x, y := portal.PickPointForRect(14, 14)
-	log.Printf("(%.6s) => %s.%s (%d,%d)", ctx.Client.Player.Id, map_name, target_zone, x, y)
-
-	if !ctx.Client.Status.IsGhost() {
-		ctx.Server.MapcastBytes(
-			old_map,
-			ctx.Client,
-			ctx.Client.Status.X,
-			ctx.Client.Status.Y,
-			msg.ConstructByteBuffer(msg.SERVER_PLAYER_EXITED, msg.U16(ctx.Client.Spot)),
-		)
-	}
-
-	ctx.Server.ChangeClientRoom(ctx.Client, map_name)
-	ctx.Client.SendBytes(
-		msg.ConstructByteBuffer(msg.SERVER_PLAYER_SET_MAP, msg.StrToByteArray(map_name), msg.U16(x), msg.U16(y)),
-	)
-	// REMOVER
-	// ctx.Server.SendBytes(ctx.Client,
-	// 	msg.ConstructByteBuffer(msg.SERVER_PLAYER_SET_MAP, msg.StrToByteArray(map_name), msg.U16(x), msg.U16(y)),
-	// )
-}
-
-// isso vai ser chamado pela VM.
-// func event_server_ask(s *Server, c *Client) {
-// }
 
 func msg_event_player_ok(ctx RemoteMessageContext) {
 	// o que eu faço com a mensagem agora?

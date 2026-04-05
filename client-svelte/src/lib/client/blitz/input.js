@@ -11,7 +11,14 @@ const input = {
     height : 0, 
 
     /** @type {{event:string, handler: function}[]} */
-    currentListeners : []
+    currentListeners : [],
+    /** @type {{event:string, handler: function(KeyboardEvent):void}[]} */
+    documentListeners: [],
+
+    /**
+     * @type {Map<string,(function():boolean)[]>}
+     */
+    key_press_handlers : new Map()    
 }
 
 /**
@@ -57,6 +64,16 @@ function AttachInput(width, height, canvasElementId){
     input.canvasElement.addEventListener("mouseup", ev =>{
         ev.preventDefault()
         input.mouseDown[ ev.button ] = false
+    })
+
+    document.addEventListener("keydown",ev =>{
+        let old_handlers = input.key_press_handlers.get(ev.key)
+        if(old_handlers && old_handlers.length > 0){
+            let current_handler = old_handlers[old_handlers.length-1]
+            if(current_handler()){
+                old_handlers.pop()
+            }
+        }        
     })
 }
 
@@ -172,6 +189,11 @@ function ClearAll(){
         /** @ts-expect-error */
         input.canvasElement?.removeEventListener( l.event, l.handler )
     }
+    for(let l of input.documentListeners){
+        /** @ts-expect-error */
+        document.removeEventListener(l.event,l.handler)
+    }
+    input.key_press_handlers.clear()
 }
 
 
@@ -195,14 +217,35 @@ function MouseDown(mb){
     return input.mouseDown[mb]
 }
 
-function KeyPress(key){
-
+/**
+ * @param {function(KeyboardEvent):void} handler 
+ */
+function OnKeyDown(handler){
+    document.addEventListener( "keydown", handler)
+    input.documentListeners.push( {event: "keydown", handler } )
 }
-function KeyDown(key){
-
+/**
+ * @param {function(KeyboardEvent):void} handler 
+ */
+function OnKeyUp(handler){
+    document.addEventListener( "keyup", handler)
+    input.documentListeners.push( {event: "keyup", handler } )
 }
-function KeyUp(key){
 
+/**
+ * adiciona um handler para uma apertada de teclado.
+ * se o handler retornar true, ele é removido.
+ * só o último handler é executado porque sim
+ * @param {string} key 
+ * @param {function():boolean} handler 
+ */
+function OnKeyPress(key,handler){
+    let handlers = input.key_press_handlers.get(key)
+    if(handlers == null){
+        input.key_press_handlers.set(key,[handler])
+    }else{
+        handlers.push(handler)
+    }
 }
 
 export {
@@ -212,14 +255,14 @@ export {
     MouseSpeedX,
     MouseSpeedY,
     MouseDown,
-
-    KeyPress,
-    KeyDown,
-    KeyUp,
     
     OnTouchStart,
     OnTouchMove,
     OnTouchEnd,
+
+    OnKeyDown,
+    OnKeyUp,
+    OnKeyPress,
 
     ClearTouchStart,
     ClearTouchMove,

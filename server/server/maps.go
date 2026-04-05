@@ -113,7 +113,8 @@ func (s *Server) LoadRooms() {
 			fmt.Printf("criando sala... \n")
 			map_name_without_extension := strings.TrimSuffix(map_name, ".json")
 			new_room := &Room{
-				Maps: pecas.NewList[entities.GameMap](),
+				Maps: pecas.NewList[MapInstance](),
+				Name: map_name_without_extension,
 				// BaseMap: entities.GameMap{
 				// 	TiledMap: &esse_mapa,
 				// 	Zones:    make(map[string]entities.MapZone),
@@ -132,11 +133,14 @@ func (s *Server) LoadRooms() {
 
 			loaded_map.Prepare()
 
-			_ = new_room.Maps.Add(loaded_map)
+			_ = new_room.Maps.Add(&MapInstance{GameMap: loaded_map, X: 0, Y: 0})
 
 			fmt.Printf("a sala tem %d mapas \n", new_room.Maps.Size())
 
 			s.maps[map_name_without_extension] = new_room
+
+			//OBS: esse ticker é o que controla os NPCs e etc.
+			s.AddTicker(new_room.GetTicker())
 
 			// log.Println(esse_mapa)
 			fmt.Printf("ok!\n")

@@ -1,5 +1,6 @@
 
 import { TileMap } from "./webgl/drawer/tilemap"
+import { TileMap2 } from "./webgl/drawer/tilemap2"
 
 /** @interface */
 class IB2D{
@@ -89,7 +90,7 @@ class IB2D{
 
     /**
      * Desenha um tilemap em x, y
-     * @param {TileMap} tilemapHandler
+     * @param {TileMap2} tilemapHandler
      * @param {IImage} imageHandler
      * @param {number} x
      * @param {number} y
@@ -186,7 +187,6 @@ function Unload(fn){
     _unloadFunctions.push(fn)
 }
 
-
 /**
  * Inicializa a engine. game deve implementar a interface iapp.
  * obs: o que estava pretendendo fazer com isso?
@@ -209,8 +209,6 @@ function Start(game, b2d){
         if (tex) textureCount--;
         return origDelete.call(this, tex);
     };
-
-    let finished = false
 
     const drawer = game.draw.bind(game)
     let animation_frame_id=0
@@ -241,7 +239,6 @@ function Start(game, b2d){
 
         WebGLRenderingContext.prototype.createTexture = origCreate
         WebGLRenderingContext.prototype.deleteTexture = origDelete
-
     }
 }
 

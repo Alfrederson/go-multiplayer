@@ -1,8 +1,11 @@
 <script>
+    import { begin } from "$lib/client/game/fb/fb";
     import {start_game, resize_screen} from "$lib/client/main"
     import { onMount } from "svelte";
 
     onMount(()=>{
+        
+
         const finisher = start_game()
 
         function resize_handler(event){

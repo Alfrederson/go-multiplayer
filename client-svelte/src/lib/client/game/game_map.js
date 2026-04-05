@@ -17,7 +17,8 @@ const TILE_WIDTH = 16
 const TILE_HEIGHT = 16
 
 Preload(async b => {
-    tileset = await b.LoadAnimImage("grayscale.png",TILE_WIDTH,TILE_HEIGHT)
+    tileset = await b.LoadAnimImage("Basis01.png",TILE_WIDTH,TILE_HEIGHT)
+    // tileset = await b.LoadAnimImage("grayscale.png",TILE_WIDTH,TILE_HEIGHT)
 })
 
 class Portal extends Sensor {
@@ -81,6 +82,8 @@ class GameMap {
         this.width = this.tiles[0].length
         this.height = this.tiles.length
     }
+
+
 
     /**
      * @param {import("./interfaces").ICollider} target

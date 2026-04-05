@@ -21,6 +21,8 @@ import (
 
 type MessageHandler func(RemoteMessageContext)
 
+type Ticker func(s *Server)
+
 type Server struct {
 	TotalPlayers int
 	MaxPlayers   int
@@ -38,6 +40,18 @@ type Server struct {
 	free_clients pecas.List[Client]
 
 	message_handlers []MessageHandler
+
+	tickers_running bool
+	ticker_queue    chan bool
+	tickers         map[string]Ticker
+}
+
+func NewServer() Server {
+	return Server{
+		MaxPlayers:   100,
+		ticker_queue: make(chan bool),
+		tickers:      make(map[string]Ticker),
+	}
 }
 
 func (s *Server) SetMessageHandler(msg_byte int, handler MessageHandler) {

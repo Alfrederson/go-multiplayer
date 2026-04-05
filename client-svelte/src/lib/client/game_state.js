@@ -13,6 +13,7 @@ import * as messages from "./game/client/messages.js"
 import Stack from "./stack.js"
 import { Message } from "./game/client/client.js"
 import { chat_message, debug_text, listen_to } from "./main.js"
+import { AutoTilemap } from "./game/autotilemap/autotilemap.js"
 
 
 const MAX_THINGS = 500
@@ -62,12 +63,14 @@ class GameState {
         this.screen.cameraX = constrain(
             this.screen.cameraX,
             0,
-            this.tileMap.width*16 - this.screen.width
+            this.autoTilemap.width*16 - this.screen.width
+            //this.tileMap.width*16 - this.screen.width
         )
         this.screen.cameraY = constrain(
             this.screen.cameraY,
             0,
-            this.tileMap.height*16 - this.screen.height
+            this.autoTilemap.height*16 - this.screen.height
+            //this.tileMap.height*16 - this.screen.height
         )         
     }
     /**
@@ -98,7 +101,8 @@ class GameState {
         }
     }
 
-    tileMap = new GameMap()
+    // tileMap = new GameMap()
+    autoTilemap = new AutoTilemap()
 
     /** @type {Map<number,Player>} */
     _other_clients = new Map()
@@ -154,7 +158,7 @@ class GameState {
         }
 
         if(this.screen.target){
-            this.snapTo(this.screen.target.x, this.screen.target.y)
+            this.lookAt(this.screen.target.x, this.screen.target.y)
         }
 
         // troca as pilhas
@@ -171,18 +175,29 @@ class GameState {
         b.Cls(152, 34, 137)
         b.SetColor(1,1,1,1)
 
-        if(!this.tileMap.loaded){
-            return
-        }
+        // if(!this.tileMap.loaded){
+        //     return
+        // }
+
 
         this.constrainCamera()
         b.SetCamera(this.screen.cameraX, this.screen.cameraY)
-        this.tileMap.render(b,this,0) 
+
+        if(this.autoTilemap.loaded){
+            this.autoTilemap.renderBaseLayer(b,this)
+        }
+        if(this.autoTilemap.loaded){
+            this.autoTilemap.renderTopLayer(b,this)
+        }
+
+        // this.tileMap.render(b,this,0) 
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)            
             obj.render && obj.render(b,this)
         }
-        this.tileMap.render(b,this,1) 
+
+
+        // this.tileMap.render(b,this,1) 
         b.SetCamera(0,0)
         for (let i = 0; i < this._scene.top; i++) {
             let obj = this._scene.at(i)
@@ -246,10 +261,6 @@ class GameState {
                 }
             }
         },100)
-
-        listen_to("spam", ev =>{
-            this.game_client?.send(new Uint8Array(Array.from({length:300},x => 3)))
-        })
     }
 
     disconnected(){
@@ -305,40 +316,63 @@ class GameState {
      * @param {TeleportParam} target 
      */
     teleportPlayerTo(map_name, target ){
+        console.log(map_name)
         const {x,y,zone} = target
         debug_text(`indo para ${map_name} ${x} ${y}`)
         let exit_dir = this.player ? this.player.direction : DIR_DOWN
-        return this.tileMap.loadFromServer(map_name).then( ()=>{
+
+        return this.autoTilemap.loadFromServer(map_name).then( ()=>{
             this._scene.reset()
             this._alives.reset()
             this._other_clients.clear()
-                let pos_x,pos_y
-            // OBS: remover esse conceito de target_zone porque o 
-            // servidor sempre vai mandar o x e y correto
+            let pos_x,pos_y
             if(zone){
-                [pos_x,pos_y] = this.tileMap.pickPlaceInZone([14,14],zone)                
+                //
+                [pos_x,pos_y] = [50,50]
             }else{
-                pos_x = x
-                pos_y = y
+                [pos_x,pos_y] = [50,50]
             }
-
             this.current_map = map_name
             this.player = make(new Player(),{x : pos_x,y : pos_y,})
-            
-            // sensores
-            this.tileMap.sensors.forEach( x => {
-                x.setTarget( this.player )
-                x.setOnEnter(  ()=> this.playerEnterPortal(x.to_map,x.to_zone) )
-                this.spawn( x )
-            })
-            // jogador
             this.spawn(this.player)
                 .setTarget(this.player)
                 .snapTo(this.player.x,this.player.y)
 
             this.player.direction=exit_dir
-            ControlarPlayer(this,this.player)    
+            ControlarPlayer(this,this.player)              
         })
+
+        // return this.tileMap.loadFromServer(map_name).then( ()=>{
+        //     this._scene.reset()
+        //     this._alives.reset()
+        //     this._other_clients.clear()
+        //         let pos_x,pos_y
+        //     // OBS: remover esse conceito de target_zone porque o 
+        //     // servidor sempre vai mandar o x e y correto
+        //     if(zone){
+        //         [pos_x,pos_y] = this.tileMap.pickPlaceInZone([14,14],zone)                
+        //     }else{
+        //         pos_x = x
+        //         pos_y = y
+        //     }
+
+        //     this.current_map = map_name
+        //     this.player = make(new Player(),{x : pos_x,y : pos_y,})
+            
+        //     // sensores
+        //     this.tileMap.sensors.forEach( x => {
+        //         x.setTarget( this.player )
+        //         x.setOnEnter(  ()=> this.playerEnterPortal(x.to_map,x.to_zone) )
+        //         this.spawn( x )
+        //     })
+        //     // jogador
+        //     this.spawn(this.player)
+        //         .setTarget(this.player)
+        //         .snapTo(this.player.x,this.player.y)
+
+        //     this.player.direction=exit_dir
+        //     ControlarPlayer(this,this.player)    
+        // })
     }
 
     /**
@@ -479,6 +513,11 @@ class GameState {
                 const from_player = msg.take_i16()
                 const text = msg.take_short_string()
                 chat_message(`player${from_player}:${text}`)
+            }break;
+            // mensagens de eventos
+            case messages.EVENT.SERVER_MESSAGE:{
+                const text = msg.take_short_string()
+                chat_message(`msg ${text}`)
             }break;
         }
     }

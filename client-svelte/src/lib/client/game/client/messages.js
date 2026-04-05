@@ -20,6 +20,7 @@ export const PLAYER = {
 }
 
 export const EVENT = {
-    SERVER_ASK : 14,
-    PLAYER_ANSWER : 15
+    SERVER_MESSAGE : 14,
+    SERVER_ASK : 15,
+    PLAYER_ANSWER : 16
 }

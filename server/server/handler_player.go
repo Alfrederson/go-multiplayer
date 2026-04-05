@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	msghelper "github.com/Alfrederson/backend_game/helper"
 	"github.com/Alfrederson/backend_game/msg"
 )
 
@@ -42,6 +43,15 @@ func OnPlayerChat(ctx RemoteMessageContext) {
 		log.Println("msg_player_chat: ", err)
 		return
 	}
+
+	switch chat {
+	case "test_msg":
+		ctx.Client.SendMessage(
+			*msghelper.ServerEventMessage("hey, ho! lets go!"),
+		)
+		return
+	}
+
 	fmt.Printf("%d > %s\n", ctx.Client.Spot, chat)
 	ctx.Server.Mapcast(
 		ctx.Client.Status.CurrentMap,
@@ -90,6 +100,7 @@ func OnPlayerEnterMap(ctx RemoteMessageContext) {
 	log.Printf("(%.6s) => %s.%s (%d,%d)", ctx.Client.Player.Id, map_name, target_zone, x, y)
 
 	if !ctx.Client.Status.IsGhost() {
+		// a gente precisa fazer isso?
 		ctx.Server.MapcastBytes(
 			old_map,
 			ctx.Client,

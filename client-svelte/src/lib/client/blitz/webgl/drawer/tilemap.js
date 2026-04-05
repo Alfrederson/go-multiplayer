@@ -73,6 +73,9 @@ function tile_buffer_from_array(array,tex_width,tex_height,tileset_cols){
   //   (x,y)+(0,1) (x,y)+(1,1)
 
   // pra cada tile do mapa original...
+  // aqui é a etapa onde a gente monta os bytes da textura que sobe pra placa de vídeo
+  // cada tile, tem um deslocamento x e y
+  // então como a gente manda os deslocamentos de cada subtile?
   for(let y = 0; y < height; y++){
     for(let x = 0; x < width; x++) {
       for(let sub_y = 0; sub_y < 2; sub_y++){
@@ -83,8 +86,10 @@ function tile_buffer_from_array(array,tex_width,tex_height,tileset_cols){
           const tile_x = tile % (tileset_cols)
           const tile_y = (tile / (tileset_cols))|0
 
+          // wtf r u doing bruh
+
           // r = offset x
-          buffer[cell] = (tile_x-1)*2 + sub_x + (sub_x == sub_y ? Math.random() > 0.95 ? 1 : 0 : 0)
+          buffer[cell] = (tile_x-1)*2 + sub_x
           // g = offset y
           buffer[cell+1] = tile_y*2 + sub_y
           // b = ?

@@ -1,10 +1,9 @@
-import { OnTouchEnd, OnTouchMove, OnTouchStart, ClearAll } from "../../blitz/input";
+import { OnTouchEnd, OnTouchMove, OnTouchStart, ClearAll, OnKeyDown, OnKeyUp, OnKeyPress } from "../../blitz/input";
 import { Player } from "./player";
 import { Nub } from "../nub";
 import { GameState } from "../../game_state";
 
 const NUB_SIZE = 64
-
 
 /**
  * @param {GameState} state 
@@ -61,35 +60,44 @@ function ControlarPlayer(state, player) {
         player.sy = nub_walk.getY()*2
     }
 
+    /** @type {{ [key: string]: boolean }} */
     const keys = {}
-    document.addEventListener("keydown",event=>{
+    
+    OnKeyDown(event =>{
         using_touch=false
         nub_walk.hidden=true
         keys[event.key] = true
     })
-    document.addEventListener("keyup",event=>{
+
+    OnKeyUp(event =>{
         keys[event.key] = false
     })
 
+    OnKeyPress(" ",()=>{
+        // uar os npcs, etc.
+        return false
+    })
+
+    // que desgraça é essa?
     state.spawn( {
         dead : false,
         update : function(){
-            let sx = 0
-            let sy = 0
-            if(keys["w"]) sy -=2
-            if(keys["s"]) sy += 2
-            if(keys["a"]) sx -=2
-            if(keys["d"]) sx += 2
+            let sx = 0, sy = 0
+            if(keys["w"]) sy -=1
+            if(keys["s"]) sy += 1
+            if(keys["a"]) sx -=1
+            if(keys["d"]) sx += 1
             player.sx = sx
             player.sy = sy
         },
         render : function(){
-
         }
     })
 
     state.spawn( nub_walk )
 }
+
+
 
 export { 
     ControlarPlayer

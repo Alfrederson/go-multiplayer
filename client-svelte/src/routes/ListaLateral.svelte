@@ -41,15 +41,10 @@
 <div class="d-flex flex-column flex-shrink-0 bg-none" style="width: 4.5rem; z-index:10; position: fixed;">
     <div style="height:4.5rem"></div>
     <ul class="nav nav-pills nav-flush flex-column mb-auto text-center gap-2" style="font-weight:bold; color:white;">
-        <!-- <li>
+        <li>
             <a href="#" class="nav-link gauge" onclick={logar}>
                 <span class="icone">👤</span>
             </a>
-        </li> -->
-        <li>
-            <button class="nav-link gauge" onclick={spam}>
-                <span class="icone">💣</span>
-            </button>
         </li>
         <li>
             <span class="nav-link gauge">

@@ -73,9 +73,9 @@ class Player {
     controlLocal(s,deltaTime){
         let out = [0,0,0,0]
 
-        this.sy = constrain(this.sy, -8,8)
+        this.sy = constrain(this.sy, -2,2)
         this.y += this.sy * deltaTime * 60;
-        if(s.tileMap.objectCollides(
+        if(s.autoTilemap.objectCollides(
             this,
             out,
             1337
@@ -84,9 +84,9 @@ class Player {
             this.y += out[1]+out[3]/2 > this.y+HEIGHT/2 ? -out[3] : out[3]
         }
 
-        this.sx = constrain(this.sx, -8,8)
+        this.sx = constrain(this.sx, -2,2)
         this.x += this.sx * deltaTime * 60;
-        if(s.tileMap.objectCollides(
+        if(s.autoTilemap.objectCollides(
             this,
             out,
             1337

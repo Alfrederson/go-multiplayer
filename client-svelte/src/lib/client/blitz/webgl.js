@@ -8,6 +8,7 @@ import * as image from "./webgl/image"
 import * as render_to_texture from "./webgl/render_to_texture.js"
 
 import * as canvas2d from "./webgl/canvas2d"
+import { TileMapDrawer2 } from "./webgl/drawer/tilemap2"
 
 /**
  * WebGL program with attribute and uniform locations.
@@ -89,6 +90,9 @@ class WGL_B2D {
 
     /** @type { TileMapDrawer? } */
     tileBuddy = null
+
+    /** @type { TileMapDrawer2? } */
+    tileBuddy2 = null
 
     /**
      * Carrega uma imagem.
@@ -178,6 +182,7 @@ class WGL_B2D {
         // imagem ao mesmo tempo. vai ter não!
         this.imageBuddy = new ImageDrawer(this.ctx,width, height)
         this.tileBuddy = new TileMapDrawer(this.ctx,width, height)
+        this.tileBuddy2 = new TileMapDrawer2(this.ctx,width,height)
                 
         // alpha blend
         this.ctx.enable(this.ctx.BLEND);
@@ -287,7 +292,7 @@ class WGL_B2D {
     }
 
     /**
-     * @param {import("./webgl/drawer/tilemap.js").TileMap} tilemapHandler
+     * @param {import("./webgl/drawer/tilemap2.js").TileMap2} tilemapHandler
      * @param {image.WGLImage} imageHandler
      * @param {number} x
      * @param {number} y
@@ -295,7 +300,7 @@ class WGL_B2D {
     DrawTilemap(tilemapHandler, imageHandler, x,y){
         if(!this.ctx)
             throw "não consigo desenhar o tilemap porque o contexto não foi inicializado"
-        this.tileBuddy?.drawTilemap(this.ctx,tilemapHandler,imageHandler,x,y)
+        this.tileBuddy2?.drawTilemap(this.ctx,tilemapHandler,imageHandler,x,y)
     }
     
     /**
