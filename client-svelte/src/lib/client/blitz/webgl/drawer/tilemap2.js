@@ -193,21 +193,23 @@ uniform float u_block_width;
 void main(){
     vec4 color = texture2D(u_tex, v_uv);
 
-    // espessura da borda em UV (1 pixel ≈ 1 / tamanho da textura)
+    // // espessura da borda em UV (1 pixel ≈ 1 / tamanho da textura)
     // float border = 1.0 / u_block_width; // ajuste conforme tamanho do bloco
 
-    // detecta se está na borda
+    // // detecta se está na borda
     // bool isBorder =
     //     v_uv.x < border ||
     //     v_uv.x > 1.0 - border ||
     //     v_uv.y < border ||
     //     v_uv.y > 1.0 - border;
-    gl_FragColor = color;
+    // gl_FragColor = color;
     // if (isBorder) {
     //     gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); // lime
     // } else {
     //     gl_FragColor = color;
     // }
+
+    gl_FragColor = color;
 }
 `
 

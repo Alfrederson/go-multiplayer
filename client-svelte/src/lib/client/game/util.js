@@ -1,5 +1,6 @@
 import { writable } from "svelte/store"
 import { SERVER_URL } from "../config"
+import { ByteReader } from "./byte_reader/byte_reader"
 
 function constrain(num, from, to){
     return Math.max(from, Math.min(num,to))
@@ -60,10 +61,26 @@ function diff(a,b){
 }
 
 
+/**
+ * baixa um arquivo como um bytereader
+ * @param {string | URL | Request} url
+ */
+async function fetch_byte_buffer(url){
+    const result = await fetch(url)
+    if(result.status !== 200){
+        throw "arquivo não encontrado "+url
+    }
+    const bytes = await result.arrayBuffer()
+    const reader = new ByteReader(bytes)
+    return reader
+}
+
+
 export {
     constrain, 
     rectsIntersect,
     diff,
     dice,
-    coin
+    coin,
+    fetch_byte_buffer
 }

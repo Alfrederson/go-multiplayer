@@ -58,7 +58,9 @@ func main() {
 	// })
 	r.Static("/maps", "../files/maps")
 
+	// na verdade...... a gente vai baixar do CDN?
 	r.Static("/autotilemaps", "../files/autotilemaps")
+	r.Static("/tilesets", "../files/tilesets")
 
 	r.GET("/server", sv.GetWSHandler())
 	r.GET("/server/status", func(ctx *gin.Context) {
