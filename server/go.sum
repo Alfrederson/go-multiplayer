@@ -36,6 +36,12 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapp
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.48.1/go.mod h1:viRWSEhtMZqz1rhwmOVKkWl6SwmVowfL9O2YR5gI2PE=
 github.com/MicahParks/keyfunc v1.9.0 h1:lhKd5xrFHLNOWrDc4Tyb/Q1AJ4LCzQ48GVJyVIID3+o=
 github.com/MicahParks/keyfunc v1.9.0/go.mod h1:IdnCilugA0O/99dW+/MkvlyrsX8+L8+x95xuVNtM5jw=
+github.com/Shopify/go-lua v0.0.0-20250718183320-1e37f32ad7d0 h1:oGlw/+ndlFMn8KWLjEX5nULcDwOC4tJy3Kk1Pm84Cys=
+github.com/Shopify/go-lua v0.0.0-20250718183320-1e37f32ad7d0/go.mod h1:M4CxjVc/1Nwka5atBv7G/sb7Ac2BDe3+FxbiT9iVNIQ=
+github.com/arnodel/golua v0.2.0 h1:J7Y9BPNlaiuE7zkPxF+vOSBGjEpo8v0WFENzYl+VzXo=
+github.com/arnodel/golua v0.2.0/go.mod h1:eGGXpsuFME3WM1f/9DUQx54oEzQrC/BwgyST+lj2q0I=
+github.com/arnodel/strftime v0.1.6 h1:0hc0pUvk8KhEMXE+htyaOUV42zNcf/csIbjzEFCJqsw=
+github.com/arnodel/strftime v0.1.6/go.mod h1:5NbK5XqYK8QpRZpqKNt4OlxLtIB8cotkLk4KTKzJfWs=
 github.com/bytedance/sonic v1.11.6 h1:oUp34TzMlL+OY1OUWxHqsdkgC/Zfc85zGqw9siXjrc0=
 github.com/bytedance/sonic v1.11.6/go.mod h1:LysEHSvpvDySVdC2f87zGWf6CIKJcAvqab1ZaiQtds4=
 github.com/bytedance/sonic v1.12.6 h1:/isNmCUF2x3Sh8RAp/4mh4ZGkcFAX/hLrzrK3AvpRzk=

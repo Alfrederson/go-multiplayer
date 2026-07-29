@@ -46,6 +46,7 @@ func main() {
 	sv.AddMessageHandlers()
 	sv.LoadTilesets()
 	sv.LoadRooms()
+	sv.InitScripting()
 	sv.StartTickers()
 
 	r.Use(cors.Default())

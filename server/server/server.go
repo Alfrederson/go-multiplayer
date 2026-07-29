@@ -7,8 +7,10 @@ import (
 
 	"github.com/Alfrederson/backend_game/autotilemap"
 	"github.com/Alfrederson/backend_game/entities"
+	msghelper "github.com/Alfrederson/backend_game/helper"
 	"github.com/Alfrederson/backend_game/msg"
 	"github.com/Alfrederson/backend_game/pecas"
+	"github.com/arnodel/golua/runtime"
 	"github.com/gobwas/ws/wsutil"
 )
 
@@ -44,6 +46,9 @@ type Server struct {
 	tickers_running bool
 	ticker_queue    chan bool
 	tickers         map[string]Ticker
+
+	lua_rt      *runtime.Runtime
+	lua_scripts map[string]*runtime.Table
 }
 
 func NewServer() Server {
@@ -173,4 +178,25 @@ func (s *Server) Broadcast(from *Client, message byte, data ...[]byte) {
 			}
 		})
 	}
+}
+
+// envia uma mensagem de texto para todos os jogadores conectados
+func (s *Server) BroadcastText(text string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	new_msg := msghelper.ServerChatMessage(text).Bytes()
+	for _, this_map := range s.maps {
+		if this_map.ActiveClients.Size() == 0 {
+			continue
+		}
+		this_map.ActiveClients.ForEach(func(c *Client) {
+			if (*c).Active {
+				(*c).ByteSink <- new_msg
+			}
+		})
+	}
+}
+
+func (s *Server) MapcastText(mapname string, text string) {
+	s.MapcastBytes(mapname, nil, 0, 0, msghelper.ServerChatMessage(text).Bytes())
 }

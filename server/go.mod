@@ -11,6 +11,11 @@ require (
 )
 
 require (
+	github.com/arnodel/golua v0.2.0 // indirect
+	github.com/arnodel/strftime v0.1.6 // indirect
+)
+
+require (
 	cel.dev/expr v0.20.0 // indirect
 	cloud.google.com/go v0.117.0 // indirect
 	cloud.google.com/go/auth v0.16.1 // indirect
@@ -25,6 +30,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.48.1 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.48.1 // indirect
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
+	github.com/Shopify/go-lua v0.0.0-20250718183320-1e37f32ad7d0
 	github.com/bytedance/sonic v1.12.6 // indirect
 	github.com/bytedance/sonic/loader v0.2.1 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
