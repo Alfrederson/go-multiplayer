@@ -10,6 +10,7 @@ import (
 	msghelper "github.com/Alfrederson/backend_game/helper"
 	"github.com/Alfrederson/backend_game/msg"
 	"github.com/Alfrederson/backend_game/pecas"
+	"github.com/Alfrederson/backend_game/scheduler"
 	"github.com/arnodel/golua/runtime"
 	"github.com/gobwas/ws/wsutil"
 )
@@ -47,8 +48,10 @@ type Server struct {
 	ticker_queue    chan bool
 	tickers         map[string]Ticker
 
-	lua_rt      *runtime.Runtime
-	lua_scripts map[string]*runtime.Table
+	lua_rt *runtime.Runtime
+	// nessas tabelas a gente guarda as variáveis de métodos de cada handlers
+	lua_scripts_tables map[string]*runtime.Table
+	lua_scheduler      *scheduler.Scheduler
 }
 
 func NewServer() Server {
