@@ -10,8 +10,6 @@ import (
 	msghelper "github.com/Alfrederson/backend_game/helper"
 	"github.com/Alfrederson/backend_game/msg"
 	"github.com/Alfrederson/backend_game/pecas"
-	"github.com/Alfrederson/backend_game/scheduler"
-	"github.com/arnodel/golua/runtime"
 	"github.com/gobwas/ws/wsutil"
 )
 
@@ -48,10 +46,7 @@ type Server struct {
 	ticker_queue    chan bool
 	tickers         map[string]Ticker
 
-	lua_rt *runtime.Runtime
-	// nessas tabelas a gente guarda as variáveis de métodos de cada handlers
-	lua_scripts_tables map[string]*runtime.Table
-	lua_scheduler      *scheduler.Scheduler
+	ScriptingEngine
 }
 
 func NewServer() Server {
@@ -126,6 +121,11 @@ func int_abs(val int) int {
 func (s *Server) MapcastBytes(mapname string, from *Client, x int, y int, data []byte) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	_, existe := s.maps[mapname]
+	if !existe {
+		fmt.Printf("[WARN] mensagem para mapa não existente %s\n", mapname)
+		return
+	}
 	s.maps[mapname].ActiveClients.ForEach(func(c *Client) {
 		// isso não é para acontecer nunca...
 		if c.Status.CurrentMap != mapname {
@@ -202,4 +202,9 @@ func (s *Server) BroadcastText(text string) {
 
 func (s *Server) MapcastText(mapname string, text string) {
 	s.MapcastBytes(mapname, nil, 0, 0, msghelper.ServerChatMessage(text).Bytes())
+}
+
+func (s *Server) InitScripting() {
+	s.ScriptingEngine = ScriptingEngine{}
+	s.ScriptingEngine.InitScripting(s)
 }

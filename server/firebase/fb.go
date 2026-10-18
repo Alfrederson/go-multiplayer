@@ -9,12 +9,14 @@ import (
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
+	"firebase.google.com/go/v4/storage"
 	"google.golang.org/api/option"
 )
 
 var firebase_app *firebase.App
 var auth_client *auth.Client
 var fs_client *firestore.Client
+var storage_client *storage.Client
 
 type FirebaseInfo struct {
 	Identities     map[string][]string `json:"identities"`
@@ -52,6 +54,10 @@ func init() {
 		log.Fatalf("não consegui inicializar o cliente firestore: %v", err)
 	}
 
+	storage_client, err = firebase_app.Storage(ctx)
+	if err != nil {
+		log.Fatalf("não consegui inicializar o cliente storage: %v", err)
+	}
 }
 
 func ValidarToken(token_string string) (*auth.Token, error) {

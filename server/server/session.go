@@ -128,6 +128,11 @@ func (s *Server) StartSession(client *Client) {
 		s.player_by_id[client.Player.Id] = &client.Player
 	}
 
+	_, exists := s.maps[client.Status.CurrentMap]
+	if !exists {
+		client.Status.CurrentMap = "umbral"
+	}
+
 	s.maps[client.Status.CurrentMap].ActiveClients.AddLink(client.Link)
 
 	// diz par ao jogador qual é o ID dele

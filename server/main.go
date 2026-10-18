@@ -44,9 +44,24 @@ func main() {
 	sv := server.NewServer()
 
 	sv.AddMessageHandlers()
+	sv.DownloadStuffFromStorage()
 	sv.LoadTilesets()
 	sv.LoadRooms()
+	if room, _ := sv.GetRoom("1_vila"); room != nil {
+		server.AddNPCToRoom(
+			&server.NPC{
+				X:          4,
+				Y:          4,
+				Name:       "catioro",
+				Image:      "catioro.png",
+				ScriptName: "catioro.lua",
+			},
+			room,
+		)
+	}
+
 	sv.InitScripting()
+
 	sv.StartTickers()
 
 	r.Use(cors.Default())
@@ -60,7 +75,7 @@ func main() {
 	r.Static("/maps", "../files/maps")
 
 	// na verdade...... a gente vai baixar do CDN?
-	r.Static("/autotilemaps", "../files/autotilemaps")
+	r.Static("/autotilemaps", "../files/maps")
 	r.Static("/tilesets", "../files/tilesets")
 
 	r.GET("/server", sv.GetWSHandler())

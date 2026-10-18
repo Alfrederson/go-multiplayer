@@ -1,15 +1,14 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Alfrederson/backend_game/autotilemap"
 	"github.com/Alfrederson/backend_game/entities"
+	fb "github.com/Alfrederson/backend_game/firebase"
 	"github.com/Alfrederson/backend_game/pecas"
 )
 
@@ -57,6 +56,14 @@ func (s *Server) LoadTilesets() {
 	}
 }
 
+func (s *Server) GetRoom(room_name string) (*Room, error) {
+	room, existe := s.maps[room_name]
+	if !existe {
+		return nil, fmt.Errorf("sala %s non ecziste", room_name)
+	}
+	return room, nil
+}
+
 // carrega os mapas que estão em ../files/maps e cria uma sala para cada um deles
 func (s *Server) LoadRooms() {
 	s.maps = make(map[string]*Room)
@@ -64,61 +71,42 @@ func (s *Server) LoadRooms() {
 	log.Println("carregando objetos mapais...")
 	panic_se_der_erro(
 		processar_diretorio("/maps", func(numero int, arquivo os.DirEntry) error {
-			if arquivo.IsDir() {
+			if !arquivo.IsDir() {
 				return nil
 			}
-			filename := arquivo.Name()
-			map_name := filepath.Base(filename)
 
-			esse_mapa := entities.TiledMap{}
-			fmt.Printf("lendo %s ... \n", map_name)
-			bytes, err := os.ReadFile(filepath.Join("../files/maps", arquivo.Name()))
-			if err != nil {
-				return err
-			}
-			fmt.Printf("interpretando... \n")
-			err = json.Unmarshal(bytes, &esse_mapa)
-			if err != nil {
-				return err
-			}
+			fmt.Printf("[INFO] processando mapa %s \n", arquivo.Name())
+			// nome do mapa, ex: 1_vila
+			map_name := arquivo.Name()
 
-			fmt.Printf("%2d) %s ", numero, map_name)
+			esse_mapa := autotilemap.AutoTilemap{}
+			// carregar os bytes lá...
 
-			// TODO: usar o nosso formato de arquivo, não essa desgraça de JSON
-
-			fmt.Printf("criando sala... \n")
-			map_name_without_extension := strings.TrimSuffix(map_name, ".json")
 			new_room := &Room{
-				Maps: pecas.NewList[MapInstance](),
-				Name: map_name_without_extension,
-				// BaseMap: entities.GameMap{
-				// 	TiledMap: &esse_mapa,
-				// 	Zones:    make(map[string]entities.MapZone),
-				// 	Portals:  make(map[string]entities.MapPortal),
-				// },
-				// // Isso aqui a gente vai carregar da lista de objetos
-				// OverlayMaps:   pecas.NewList[entities.GameMap](),
+				Maps:          pecas.NewList[MapInstance](),
+				Name:          map_name,
+				Objects:       pecas.NewList[GameObject](),
 				ActiveClients: pecas.NewList[Client](),
 			}
 
 			loaded_map := &entities.GameMap{
-				TiledMap: &esse_mapa,
-				Zones:    make(map[string]entities.MapZone),
-				Portals:  make(map[string]entities.MapPortal),
+				AutoTilemap: &esse_mapa,
+				Zones:       make(map[string]entities.MapZone),
+				Portals:     make(map[string]entities.MapPortal),
 			}
-
 			loaded_map.Prepare()
 
+			// por que estou considerando a possibilidade de ter mais de um mapa na mesma
+			// sala??????????
 			_ = new_room.Maps.Add(&MapInstance{GameMap: loaded_map, X: 0, Y: 0})
 
 			fmt.Printf("a sala tem %d mapas \n", new_room.Maps.Size())
 
-			s.maps[map_name_without_extension] = new_room
+			s.maps[map_name] = new_room
 
 			//OBS: esse ticker é o que controla os NPCs e etc.
 			s.AddTicker(new_room.GetTicker())
 
-			// log.Println(esse_mapa)
 			fmt.Printf("ok!\n")
 
 			return nil
@@ -126,17 +114,20 @@ func (s *Server) LoadRooms() {
 	)
 }
 
-// nem ideia de como vou fazer isso
-// func (s *Server) OpenHouse(house_name string) *ServerMap {
-// 	casa, existe := s.maps[house_name]
-// 	if existe {
-// 		return casa
-// 	}
-// 	fmt.Printf("criando sala para casa %s \n", house_name)
+// Baixa todos os assets (mapas, tilesets, imagens, etc do bucket)
+func (s *Server) DownloadStuffFromStorage() {
+	log.Println("carregando conteudo do cloud storage")
 
-// 	return nil
-// }
+	log.Println("carregando mapas")
+	// por acaso isso já baixa tudo o que tem nos diretórios também, ex: /maps/x/tiles
+	err := fb.DownloadFromStorage("dumpster-4567", "maps", "../files/maps/")
+	if err != nil {
+		panic(fmt.Errorf("deu ruim na hora de baixar os mapas: %v", err))
+	}
 
-// func (s *Server) CloseHouse(house_name string) {
-
-// }
+	log.Println("carregando tilesets")
+	err = fb.DownloadFromStorage("dumpster-4567", "tilesets", "../files/tilesets/")
+	if err != nil {
+		panic(fmt.Errorf("deu ruim na hora de baixar os tilesets: %v", err))
+	}
+}

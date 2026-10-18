@@ -1,3 +1,5 @@
 *.exe
 conta-fb.json
 /server/*.exe
+/files/maps/*
+/files/tilesets/*

@@ -3,6 +3,8 @@ package entities
 import (
 	"fmt"
 	"math/rand"
+
+	"github.com/Alfrederson/backend_game/autotilemap"
 )
 
 const (
@@ -84,7 +86,7 @@ type MapPortal struct {
 }
 
 type GameMap struct {
-	*TiledMap
+	*autotilemap.AutoTilemap
 	Zones   map[string]MapZone
 	Portals map[string]MapPortal
 }
@@ -132,14 +134,5 @@ func processar_camada_de_coisas(l *TiledMapLayer, m *GameMap) {
 }
 
 func (m *GameMap) Prepare() {
-	for _, layer := range m.TiledMap.Layers {
-		switch layer.Name {
-		case LAYER_NAME_COISAS:
-			fmt.Printf("processando camada %s \n", layer.Name)
-			processar_camada_de_coisas(&layer, m)
-		default:
-			fmt.Printf("pulando camada %s \n", layer.Name)
-			continue
-		}
-	}
+	// criar colisões, etc
 }

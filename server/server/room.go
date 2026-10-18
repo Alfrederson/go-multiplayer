@@ -18,6 +18,7 @@ type Room struct {
 	Name string
 	Maps pecas.List[MapInstance]
 
+	Objects       pecas.List[GameObject]
 	ActiveClients pecas.List[Client]
 }
 
@@ -37,8 +38,14 @@ func (r *Room) ComputeCollisionMap() {
 
 func (r *Room) GetTicker() (string, Ticker) {
 	return fmt.Sprintf("ticker_%s", r.Name), func(s *Server) {
-		//s.S(r.Name,"hey, ho!")
-		// essa API é horrorosa
-		//s.MapcastBytes(r.Name, nil, 0, 0, msghelper.ServerChatMessage("Hey, ho! Lets go!").Bytes())
+		r.Objects.ForEach(func(obj *GameObject) {
+			// a gente vai definir os Tick dos obj como sendo
+			// scripts de Lua
+			(*obj).Tick(&TickContext{
+				Server:          s,
+				Room:            r,
+				ScriptingEngine: &s.ScriptingEngine,
+			})
+		})
 	}
 }
